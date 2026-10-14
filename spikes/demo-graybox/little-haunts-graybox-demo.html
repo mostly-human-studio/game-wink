@@ -23,7 +23,8 @@ canvas{display:block;width:100vw;height:100vh}
   box-shadow:0 6px 22px rgba(0,0,0,.5);pointer-events:none}
 #bubble::after{content:"";position:absolute;left:50%;bottom:-11px;margin-left:-11px;border:11px solid transparent;
   border-top-color:var(--cream);border-bottom:0}
-#bubble small{display:block;text-align:right;font:13px var(--sans);opacity:.55;margin-top:5px}
+#bubble small{text-align:right;font:13px var(--sans);opacity:.55;margin-top:5px}
+#bubble small.desk-only{display:block}#bubble small.touch-only{display:none}
 #hint{position:absolute;left:50%;top:max(16px,env(safe-area-inset-top));transform:translateX(-50%);
   width:max-content;max-width:calc(100vw - 132px);text-align:center;font-size:19px;font-style:italic;line-height:1.3;
   text-shadow:0 2px 12px #000,0 0 3px #000;opacity:0;transition:opacity .45s;pointer-events:none}
@@ -39,7 +40,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:7px 16px;margin:0 0 24
 dt{font:600 13px/1.9 var(--sans);background:rgba(243,230,200,.12);border-radius:6px;padding:0 8px;justify-self:start}
 dd{margin:0;line-height:1.6}
 .touch-only{display:none}
-@media (pointer:coarse){dl.touch-only{display:grid}small.touch-only{display:block}.desk-only{display:none}}
+@media (pointer:coarse){dl.touch-only{display:grid}.desk-only{display:none}#bubble small.desk-only{display:none}#bubble small.touch-only{display:block}}
 button.go{font-family:var(--serif);font-size:20px;background:var(--amber);color:var(--ink);border:0;
   border-radius:999px;padding:11px 30px;cursor:pointer}
 button.go:focus-visible{outline:3px solid var(--wisp);outline-offset:4px}
@@ -57,6 +58,16 @@ button.go:focus-visible{outline:3px solid var(--wisp);outline-offset:4px}
 #bL{right:calc(max(22px,env(safe-area-inset-right)) + 92px);bottom:max(22px,env(safe-area-inset-bottom));width:70px;height:70px}
 #bD{right:calc(max(22px,env(safe-area-inset-right)) + 14px);bottom:calc(max(30px,env(safe-area-inset-bottom)) + 96px);width:58px;height:58px}
 #bP{right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));width:44px;height:44px;font-size:16px}
+#bones{position:absolute;left:max(14px,env(safe-area-inset-left));top:calc(max(14px,env(safe-area-inset-top)) + 58px);
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none;z-index:4}
+.chip{display:flex;align-items:center;gap:8px;background:rgba(13,19,48,.78);border:1px solid rgba(243,230,200,.28);
+  border-radius:999px;padding:4px 13px 4px 9px;font-size:16px}
+.chip svg{width:22px;height:12px}
+.btns{display:flex;flex-wrap:wrap;gap:10px}
+button.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.5px rgba(243,230,200,.55)}
+#err{position:absolute;left:10px;right:10px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 170px);z-index:20;display:none;
+  background:rgba(60,10,16,.92);color:#ffd9d9;border:1px solid #ff8a8a;border-radius:10px;padding:10px 12px;
+  font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:30vh;overflow:auto;pointer-events:auto}
 #debug{position:absolute;left:10px;bottom:10px;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(0,0,0,.6);
   padding:8px 10px;border-radius:6px;display:none;white-space:pre;z-index:6;pointer-events:none}
 </style>
@@ -66,7 +77,9 @@ button.go:focus-visible{outline:3px solid var(--wisp);outline-offset:4px}
 <div id="hint"></div>
 <div id="prompt"><span class="key">E</span><span id="verb"></span></div>
 <div id="bubble"><span id="line"></span><small class="desk-only">E / Space / Enter</small><small class="touch-only">Tap E</small></div>
+<div id="bones"></div>
 <div id="debug"></div>
+<div id="err" role="alert"></div>
 
 <div id="touch">
   <div id="stick"><div id="knob"></div></div>
@@ -80,7 +93,7 @@ button.go:focus-visible{outline:3px solid var(--wisp);outline-offset:4px}
   <div class="card">
     <h1>Little Haunts</h1>
     <p class="tagline">Small monsters. Big trouble.</p>
-    <p>A graybox of the first puzzle. Raise Wick's lantern to find the hidden runes, then light the three lamps in the right order to open the courtyard gate.</p>
+    <p>A graybox of the Forgotten Graveyard. In chapter 1, Wick's lantern finds hidden runes and three lamps want lighting in the right order. In chapter 2, a skeleton has gone to pieces, and it's partly Wick's fault.</p>
     <dl class="desk-only">
       <dt>WASD</dt><dd>Float (arrow keys work too)</dd>
       <dt>Shift</dt><dd>Dash</dd>
@@ -94,7 +107,7 @@ button.go:focus-visible{outline:3px solid var(--wisp);outline-offset:4px}
       <dt>E</dt><dd>Interact</dd>
       <dt>Dash</dt><dd>Hold to dash</dd>
     </dl>
-    <button class="go" id="begin">Begin</button>
+    <div class="btns"><button class="go" id="begin">Begin</button><button class="go ghost" id="ch2">Start at chapter 2</button></div>
     <p class="fine">Primitive shapes only: not art direction, not production code. <span class="desk-only">F1 shows collision debug.</span></p>
   </div>
 </div>
@@ -105,14 +118,28 @@ button.go:focus-visible{outline:3px solid var(--wisp);outline-offset:4px}
 
 <div class="overlay" id="complete" hidden>
   <div class="card">
-    <h2>Courtyard reached.</h2>
+    <h2>Out the gate.</h2>
     <p class="time" id="time">0:00</p>
-    <p>Play time, counted in simulation ticks. The skeleton's bones come next.</p>
-    <button class="go" id="again">Play again</button>
+    <p>Play time, counted in simulation ticks. Bones returned: 3 of 3. Skull: facing forward.</p>
+    <div class="btns"><button class="go" id="again">Play again</button><button class="go ghost" id="again2">Replay chapter 2</button></div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+<script>
+// Errors show on screen so they can be read on a phone (no console needed).
+(function () {
+  const seen = new Set();
+  window.reportError = function (where, e) {
+    const msg = (e && (e.stack || e.message)) || String(e), key = where + msg.slice(0, 120);
+    if (seen.has(key)) return; seen.add(key);
+    const box = document.getElementById('err'); if (!box) return;
+    box.style.display = 'block'; box.textContent += `[${where}] ${msg}\n\n`;
+  };
+  addEventListener('error', ev => reportError('uncaught', ev.error || `${ev.message} @ ${ev.filename}:${ev.lineno}:${ev.colno}`));
+  addEventListener('unhandledrejection', ev => reportError('promise', ev.reason));
+})();
+</script>
 <script>
 'use strict';
 /* =====================================================================
@@ -141,11 +168,15 @@ const LEVEL = (() => {
     for (let i = 0; i < 4; i++) { const a = P[i], b = P[(i+1)%4]; seg(a.x, a.z, b.x, b.z, tag); }
   };
   const B = 9;
-  seg(-B,-B, B,-B); seg(B,-B, B,B); seg(B,B, -B,B); seg(-B,B, -B,-B);
+  seg(-B,-B, B,-B); seg(B,-B, B,B); seg(B,B, -B,B);
+  seg(-B,B, -B,-5.6); seg(-B,-7.4, -B,-B);                                          // west wall, split for the exit gate
+  seg(-B,-5.6, -11.5,-5.6); seg(-11.5,-5.6, -11.5,-7.4); seg(-11.5,-7.4, -B,-7.4); // exit nook (Z6)
   // Courtyard fence: zero-thickness lines (the thin-geometry case) with posts.
   seg(-B,-4, -1.1,-4, 'fence'); seg(1.1,-4, B,-4, 'fence');
   for (const x of [-7.5,-5.5,-3.5,-1.1,1.1,3.5,5.5,7.5]) cir(x, -4, Math.abs(x) === 1.1 ? 0.14 : 0.08);
   seg(-1.1,-4, 1.1,-4, 'gate');
+  cir(-B,-5.6, 0.14); cir(-B,-7.4, 0.14);
+  seg(-B,-5.6, -B,-7.4, 'exitGate');
 
   const tombs = [
     { x: 5.2, z: 3.4, rot: 0.80, rune: 'R_RAVEN' },
@@ -179,11 +210,19 @@ const LEVEL = (() => {
   const pumpkins = [{ x: 7.6, z: 7.6, r: 0.3 }, { x: 3.0, z: 8.2, r: 0.24 }, { x: -1.5, z: 7.8, r: 0.28 }, { x: 7.9, z: 3.0, r: 0.26 }];
   for (const p of pumpkins) cir(p.x, p.z, p.r, 'pumpkin');
   box(0, -7.2, 4, 2.4, 0, 'mausoleum');
+  seg(2,-7.4, 6.4,-7.4, 'ledge'); // mausoleum ledge: reachable only via the ramp detour (height is presentation-only)
+  const skel = { x: -4.6, z: -6.0, yaw: Math.PI / 4 };
+  cir(skel.x, skel.z, 0.35, 'skeleton');
+  const boneSpawns = { BONE_A: { x: -1.6, z: -2.2 }, BONE_B: { x: 6.2, z: -5.5 }, BONE_C: { x: 3.3, z: -8.5 } };
 
   const interactables = [
     { id: 'I_LANTERN', kind: 'pickup', verb: 'Pick up', x: stump.x, z: stump.z, range: C.range },
     { id: 'I_PLINTH', kind: 'plinth', verb: 'Read', x: LC.x, z: LC.z, range: C.range + 0.2 },
-    ...lamps.map(l => ({ id: l.id, kind: 'lamp', verb: 'Light', x: l.x, z: l.z, rune: l.rune, range: C.range }))
+    ...lamps.map(l => ({ id: l.id, kind: 'lamp', verb: 'Light', x: l.x, z: l.z, rune: l.rune, range: C.range })),
+    { id: 'I_BONE_A', kind: 'bone', bone: 'BONE_A', verb: 'Pick up', ...boneSpawns.BONE_A, range: C.range },
+    { id: 'I_BONE_B', kind: 'bone', bone: 'BONE_B', verb: 'Pick up', ...boneSpawns.BONE_B, range: C.range, revealable: 'RV_BONE_B' },
+    { id: 'I_BONE_C', kind: 'bone', bone: 'BONE_C', verb: 'Pick up', ...boneSpawns.BONE_C, range: C.range },
+    { id: 'NPC_GATEKEEPER', kind: 'npc', verb: 'Talk', x: skel.x, z: skel.z, range: 1.4 }
   ];
   const byId = {}; for (const it of interactables) byId[it.id] = it;
 
@@ -191,14 +230,28 @@ const LEVEL = (() => {
     prims, tombs, runes, lamps, LC, stump, trees, pumpkins, interactables, byId,
     spawn: { x: 6.6, z: 6.0 },
     order: ['L_RAVEN', 'L_KEY', 'L_MOON'],      // ascending notch count (D9, provisional)
-    endTrigger: { x0: -9, x1: 9, z0: -9, z1: -4.9 },
-    gatePos: { x: 0, z: -4 },
-    dialogue: { D_PLINTH: ['Three lamps for three stones.', 'Count the marks on each stone. The fewest burns first.'] }
+    endTrigger: { x0: -11.5, x1: -9.8, z0: -7.4, z1: -5.6 },
+    courtyard: { x0: -9, x1: 9, z0: -9, z1: -4.5 },
+    gatePos: { x: 0, z: -4 }, exitGatePos: { x: -9, z: -6.5 },
+    skel, boneSpawns, boneIds: ['BONE_A', 'BONE_B', 'BONE_C'],
+    hintOrder: ['BONE_B', 'BONE_C', 'BONE_A'], // v0.3.1 A3
+    revealables: [...runes.map(r => ({ id: r.id, x: r.x, z: r.z })), { id: 'RV_BONE_B', ...boneSpawns.BONE_B }],
+    dialogue: {
+      D_PLINTH: ['Three lamps for three stones.', 'Count the marks on each stone. The fewest burns first.'],
+      D_SKULL_INTRO: ['Well. That went badly.', "Don't just float there. Help me find my bones!"],
+      D_THANKS: ['Good as new. Mostly.', 'The exit gate is yours, little light. Off you go.'],
+      D_DONE: ["Go on. I'll keep an eye socket on things."],
+      hints: {
+        BONE_B: ['My leg! Something is glinting in the fog over there.', 'Hold your lantern up to the fog. My bones are shy.'],
+        BONE_C: ['My ribs landed up on the mausoleum ledge.', 'There is a ramp around the far side. Mind the drop.'],
+        BONE_A: ['My arm flew back out toward the lamps. Show-off.', 'Look on the path by the lamp circle, past the gate.']
+      }
+    }
   };
 })();
 
 function newState() {
-  const reveal = {}; for (const r of LEVEL.runes) reveal[r.id] = { litT: 0, revealed: false };
+  const reveal = {}; for (const r of LEVEL.revealables) reveal[r.id] = { litT: 0, revealed: false };
   const lit = {}; for (const l of LEVEL.lamps) lit[l.id] = false;
   return {
     tick: 0, x: LEVEL.spawn.x, z: LEVEL.spawn.z, px: LEVEL.spawn.x, pz: LEVEL.spawn.z,
@@ -206,9 +259,22 @@ function newState() {
     hasLantern: false, lanternLevel: 0, needRelease: false,
     reveal, puzzle: { state: 'Locked', k: 0, until: 0, lit },
     gateOpen: false, beat: null, dialogue: null, target: null,
-    playTicks: 0, done: false, depen: 0
+    playTicks: 0, done: false, depen: 0,
+    // §9.2.1: the single source of truth for bones. Everything else is derived from it.
+    bones: { BONE_A: 'onSkeleton', BONE_B: 'onSkeleton', BONE_C: 'onSkeleton' },
+    npc: { state: 'Idle', until: 0, hintBone: null, hintIdx: 0 },
+    exitOpen: false, invariantErrors: 0
   };
 }
+function stateAtLampsSolved() { // canonical CP_LAMPS_SOLVED rebuild (§7.7): lamps lit, gate open, skeleton Idle
+  const s = newState();
+  s.hasLantern = true; s.gateOpen = true;
+  for (const r of LEVEL.runes) s.reveal[r.id].revealed = true;
+  s.puzzle.state = 'Solved'; s.puzzle.k = 3; for (const l of LEVEL.lamps) s.puzzle.lit[l.id] = true;
+  s.x = s.px = 0.4; s.z = s.pz = -2.3; s.fx = FWD.x; s.fz = FWD.z;
+  return s;
+}
+const inactive = (s, p) => (p.tag === 'gate' && s.gateOpen) || (p.tag === 'exitGate' && s.exitOpen);
 
 function rayCircle(px, pz, dx, dz, cx, cz, RR) {
   const fx = px - cx, fz = pz - cz, a = dx*dx + dz*dz;
@@ -244,7 +310,7 @@ function rayCapsule(px, pz, dx, dz, s, R) {
 function sweep(s, px, pz, dx, dz) {
   let best = null; // primitives are in ID order, so equal-time contacts resolve to the lower ID
   for (const p of LEVEL.prims) {
-    if (p.tag === 'gate' && s.gateOpen) continue;
+    if (inactive(s, p)) continue;
     const hit = p.kind === 'seg' ? rayCapsule(px, pz, dx, dz, p, C.radius) : rayCircle(px, pz, dx, dz, p.x, p.z, p.r + C.radius);
     if (hit && (!best || hit.t < best.t)) best = hit;
   }
@@ -265,7 +331,7 @@ function moveWick(s, dx, dz) {
   }
   // Depenetration safety net. Should never act; the debug readout counts it.
   for (const p of LEVEL.prims) {
-    if (p.tag === 'gate' && s.gateOpen) continue;
+    if (inactive(s, p)) continue;
     let cx, cz, rr;
     if (p.kind === 'cir') { cx = p.x; cz = p.z; rr = p.r + C.radius; }
     else {
@@ -290,8 +356,11 @@ function segHitsBox(x0, z0, x1, z1, b) {
   return true;
 }
 function eligible(s, it) {
+  if (it.revealable && !s.reveal[it.revealable].revealed) return false; // §7.3: applied by targeting, not by level authors
   if (it.kind === 'pickup') return !s.hasLantern;
   if (it.kind === 'plinth') return true;
+  if (it.kind === 'bone') return s.bones[it.bone] === 'atSpawn';
+  if (it.kind === 'npc') return s.npc.state === 'AwaitingHelp' || s.npc.state === 'Done'; // v0.3.1 A7
   const P = s.puzzle; // v0.3.1 A2: no lamp is targetable while Resetting
   return s.hasLantern && (P.state === 'Ready' || P.state === 'Sequencing') && !P.lit[it.id];
 }
@@ -304,13 +373,43 @@ function lampPressed(s, it, ev) {
   } else if (P.state === 'Sequencing') {
     if (it.id === LEVEL.order[P.k]) {
       P.lit[it.id] = true; P.k++; ev.push({ k: 'light', id: it.id });
-      if (P.k === 3) { P.state = 'Solved'; s.gateOpen = true; s.beat = { kind: 'gate', until: s.tick + C.beatT }; ev.push({ k: 'solved' }); }
+      if (P.k === 3) { P.state = 'Solved'; s.gateOpen = true; s.beat = { until: s.tick + C.beatT, focus: [LEVEL.gatePos.x, LEVEL.gatePos.z] }; ev.push({ k: 'solved' }); }
     } else {
       const was = LEVEL.lamps.map(l => l.id).filter(id => P.lit[id]);
       for (const id of was) P.lit[id] = false;
       P.state = 'Resetting'; P.until = s.tick + C.resetT; ev.push({ k: 'reset', id: it.id, lamps: was });
     }
   }
+}
+
+function say(s, lines, onEnd) { s.dialogue = { lines, i: 0, speaker: 'NPC_GATEKEEPER', onEnd }; }
+function talk(s, ev) {
+  const N = s.npc;
+  if (N.state === 'Done') { say(s, LEVEL.dialogue.D_DONE); ev.push({ k: 'talk' }); return; }
+  const carried = LEVEL.boneIds.filter(id => s.bones[id] === 'carried');
+  if (carried.length === 0) { // v0.3.1 A3: hint at the first outstanding bone in hintOrder; repeats cycle its lines
+    const bone = LEVEL.hintOrder.find(id => s.bones[id] === 'atSpawn'), lines = LEVEL.dialogue.hints[bone];
+    N.hintIdx = N.hintBone === bone ? (N.hintIdx + 1) % lines.length : 0; N.hintBone = bone;
+    say(s, [lines[N.hintIdx]]); ev.push({ k: 'talk' }); return;
+  }
+  for (const id of carried) s.bones[id] = 'delivered'; // allowed move: carried → delivered, every carried bone in one tick
+  ev.push({ k: 'deliver', bones: carried });
+  const delivered = LEVEL.boneIds.filter(id => s.bones[id] === 'delivered').length;
+  if (delivered === 3) {
+    N.state = 'Reassembling'; N.until = s.tick + T(4500);
+    s.beat = { until: N.until + T(500), focus: [LEVEL.skel.x, LEVEL.skel.z] }; ev.push({ k: 'reassemble' });
+  } else say(s, [delivered === 1 ? 'Ah, much better. Two to go.' : 'Nearly whole. One more.']);
+}
+function checkInvariants(s) { // §9.2.1, checked after every tick
+  const errs = [], L = LEVEL.boneIds.map(id => s.bones[id]), st = s.npc.state;
+  if (Object.keys(s.bones).sort().join() !== LEVEL.boneIds.join()) errs.push('bone ids');
+  if (L.some(l => !['onSkeleton', 'atSpawn', 'carried', 'delivered'].includes(l))) errs.push('unknown location');
+  const del = L.filter(l => l === 'delivered').length;
+  if ((st === 'Idle' || st === 'Startled') && !L.every(l => l === 'onSkeleton')) errs.push('bones left early');
+  if ((st === 'Scattered' || st === 'AwaitingHelp') && (L.includes('onSkeleton') || del >= 3)) errs.push('scatter state');
+  if (['Reassembling', 'Reassembled', 'Thankful', 'Done'].includes(st) && del !== 3) errs.push('reassembled short');
+  for (const it of LEVEL.interactables) if (it.kind === 'bone' && eligible(s, it) && s.bones[it.bone] !== 'atSpawn') errs.push('phantom pickup');
+  return errs;
 }
 
 function step(s, I) {
@@ -321,7 +420,13 @@ function step(s, I) {
     locked = true;
     if (I.advance) {
       s.dialogue.i++;
-      if (s.dialogue.i >= s.dialogue.lines.length) { s.dialogue = null; if (I.lantern) s.needRelease = true; ev.push({ k: 'dialogueEnd' }); }
+      if (s.dialogue.i >= s.dialogue.lines.length) {
+        const onEnd = s.dialogue.onEnd; s.dialogue = null; if (I.lantern) s.needRelease = true; ev.push({ k: 'dialogueEnd' });
+        if (onEnd === 'thanks') { // Thankful → Done: open the exit gate, frame it
+          s.npc.state = 'Done'; s.exitOpen = true;
+          s.beat = { until: s.tick + C.beatT, focus: [LEVEL.exitGatePos.x, LEVEL.exitGatePos.z] }; ev.push({ k: 'exitOpen' });
+        }
+      }
       else ev.push({ k: 'dialogueNext' });
     }
   }
@@ -346,7 +451,7 @@ function step(s, I) {
   // 2. Lantern radius and reveal state
   s.lanternLevel = raised ? Math.min(1, s.lanternLevel + 1/C.raiseT) : Math.max(0, s.lanternLevel - 1/C.lowerT);
   const R = C.lanternR * s.lanternLevel;
-  for (const r of LEVEL.runes) {
+  for (const r of LEVEL.revealables) {
     const st = s.reveal[r.id], dx = r.x - s.x, dz = r.z - s.z;
     st.litT = (R > 0 && dx*dx + dz*dz <= R*R) ? st.litT + 1 : 0;
     if (!st.revealed && st.litT >= C.dwell) { st.revealed = true; ev.push({ k: 'reveal', id: r.id }); }
@@ -371,21 +476,36 @@ function step(s, I) {
     const it = LEVEL.byId[s.target];
     if (it.kind === 'pickup') { s.hasLantern = true; s.puzzle.state = 'Ready'; s.target = null; ev.push({ k: 'pickup' }); }
     else if (it.kind === 'plinth') { s.dialogue = { lines: LEVEL.dialogue.D_PLINTH, i: 0, speaker: it.id }; s.target = null; ev.push({ k: 'dialogueStart' }); }
+    else if (it.kind === 'bone') { s.bones[it.bone] = 'carried'; s.target = null; ev.push({ k: 'boneUp', bone: it.bone }); } // atSpawn → carried
+    else if (it.kind === 'npc') talk(s, ev);
     else lampPressed(s, it, ev);
   }
 
   // 5. Puzzle machines
   const P = s.puzzle;
   if (P.state === 'Resetting' && s.tick >= P.until) { P.state = 'Ready'; P.k = 0; ev.push({ k: 'resetDone' }); }
+  const N = s.npc; // NPC_GATEKEEPER (§9.2)
+  if (N.state === 'Idle' && s.gateOpen && segHitsBox(s.px, s.pz, s.x, s.z, LEVEL.courtyard)) {
+    N.state = 'Startled'; N.until = s.tick + T(800);
+    s.beat = { until: N.until + T(1500), focus: [LEVEL.skel.x, LEVEL.skel.z] }; ev.push({ k: 'startled' });
+  } else if (N.state === 'Startled' && s.tick >= N.until) {
+    for (const id of LEVEL.boneIds) s.bones[id] = 'atSpawn'; // allowed move: onSkeleton → atSpawn, all three together
+    N.state = 'Scattered'; N.until = s.tick + T(1500);
+    if (s.beat) s.beat.focus = [LEVEL.boneSpawns.BONE_A.x, LEVEL.boneSpawns.BONE_A.z]; // follow Bone A out the gate (A1)
+    ev.push({ k: 'scatter' });
+  } else if (N.state === 'Scattered' && s.tick >= N.until) {
+    N.state = 'AwaitingHelp'; say(s, LEVEL.dialogue.D_SKULL_INTRO); ev.push({ k: 'awaiting' });
+  } else if (N.state === 'Reassembling' && s.tick >= N.until) {
+    N.state = 'Reassembled'; N.until = s.tick + T(500); ev.push({ k: 'reassembled' });
+  } else if (N.state === 'Reassembled' && s.tick >= N.until) {
+    N.state = 'Thankful'; say(s, LEVEL.dialogue.D_THANKS, 'thanks'); ev.push({ k: 'thankful' });
+  }
 
   // Swept trigger
-  if (!s.done) {
-    s.playTicks++;
-    if (segHitsBox(s.px, s.pz, s.x, s.z, LEVEL.endTrigger)) {
-      s.done = true;
-      ev.push({ k: 'complete', ticks: s.playTicks });
-    }
-  }
+  if (!s.done && segHitsBox(s.px, s.pz, s.x, s.z, LEVEL.endTrigger)) { s.done = true; ev.push({ k: 'complete', ticks: s.playTicks }); }
+  if (!s.done) s.playTicks++;
+  const errs = checkInvariants(s); // production: log and restore the last checkpoint; the demo counts
+  if (errs.length) { s.invariantErrors += errs.length; ev.push({ k: 'invariant', errs }); }
   return ev;
 }
 /* =========================== END CORE =========================== */
@@ -502,7 +622,8 @@ const M = {
   iron: new THREE.MeshStandardMaterial({ color: 0x1b1e26, roughness: 0.5, metalness: 0.6 }),
   brass: new THREE.MeshStandardMaterial({ color: 0xb8863b, roughness: 0.35, metalness: 0.85 }),
   pumpkin: new THREE.MeshStandardMaterial({ color: 0xc85a1a, roughness: 0.7, emissive: 0x6a2200, emissiveIntensity: 0.6 }),
-  candle: new THREE.MeshStandardMaterial({ color: 0xefe3c4, roughness: 0.6 }),  flame: new THREE.MeshBasicMaterial({ color: 0xffc46b }),
+  candle: new THREE.MeshStandardMaterial({ color: 0xefe3c4, roughness: 0.6 }),
+  flame: new THREE.MeshBasicMaterial({ color: 0xffc46b }),
   mush: new THREE.MeshStandardMaterial({ color: 0x3fd6c8, emissive: 0x2bbfb3, emissiveIntensity: 0.9, roughness: 0.5 })
 };
 const shadowy = m => { m.castShadow = true; m.receiveShadow = true; return m; };
@@ -513,11 +634,11 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshSta
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
 function wallBox(x, z, w, d, h) { const m = mesh(new THREE.BoxGeometry(w, h, d), M.stoneDark, x, h/2, z); scene.add(m); return m; }
-wallBox(0, -9.25, 18.9, 0.5, 1.3); wallBox(-9.25, 0, 0.5, 18.9, 1.3);
+wallBox(0, -9.25, 18.9, 0.5, 1.3); wallBox(-9.25, 1.925, 0.5, 15.05, 1.3); wallBox(-9.25, -8.425, 0.5, 2.05, 1.3);
 wallBox(9.2, 0, 0.4, 18.8, 0.32); wallBox(0, 9.2, 18.8, 0.4, 0.32);
 for (let i = 0; i < 18; i++) { // crenel stones on the back walls
   scene.add(mesh(new THREE.BoxGeometry(0.6, 0.25, 0.55), M.stone, -8.6 + i, 1.42, -9.25));
-  scene.add(mesh(new THREE.BoxGeometry(0.55, 0.25, 0.6), M.stone, -9.25, 1.42, -8.6 + i));
+  if (-8.6 + i < -7.7 || -8.6 + i > -5.3) scene.add(mesh(new THREE.BoxGeometry(0.55, 0.25, 0.6), M.stone, -9.25, 1.42, -8.6 + i));
 }
 // distant keep silhouettes
 const keepMat = new THREE.MeshBasicMaterial({ color: 0x090d1f, fog: false });
@@ -555,10 +676,28 @@ scene.add(mesh(new THREE.BoxGeometry(4, 2.2, 2.4), M.stone, 0, 1.1, -7.2));
 const roof = mesh(new THREE.CylinderGeometry(0.01, 2.6, 1.2, 4, 1), M.stoneDark, 0, 2.8, -7.2); roof.rotation.y = Math.PI/4; roof.scale.set(1.05, 1, 0.68); scene.add(roof);
 scene.add(mesh(new THREE.BoxGeometry(1.1, 1.6, 0.1), new THREE.MeshStandardMaterial({ color: 0x0e0f16 }), 0, 0.8, -5.97));
 
+// mausoleum ledge + ramp (Bone C's detour)
+scene.add(mesh(new THREE.BoxGeometry(2.6, 0.9, 1.6), M.stone, 3.3, 0.45, -8.2));
+scene.add(mesh(new THREE.BoxGeometry(2.7, 0.08, 1.7), M.stoneDark, 3.3, 0.92, -8.2));
+{ const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(2.4, 0); sh.lineTo(0, 0.9); sh.lineTo(0, 0);
+  scene.add(mesh(new THREE.ExtrudeGeometry(sh, { depth: 1.6, bevelEnabled: false }), M.stoneDark, 4.6, 0, -9)); }
+function groundH(x, z) { // presentation-only height (§7.1): gameplay never reads it
+  if (z < -7.4 && x >= 2 && x <= 4.6) return 0.9;
+  if (z < -7.4 && x > 4.6 && x < 7.0) return 0.9 * (7.0 - x) / 2.4;
+  return 0;
+}
+// exit gate (Z6) and the nook beyond it
+const exitGate = new THREE.Group(); scene.add(exitGate);
+for (let i = 0; i < 7; i++) exitGate.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.75, 6), M.iron, -9, 0.88, -7.25 + i*0.25));
+exitGate.add(mesh(new THREE.BoxGeometry(0.07, 0.07, 1.8), M.iron, -9, 1.6, -6.5));
+exitGate.add(mesh(new THREE.BoxGeometry(0.07, 0.07, 1.8), M.iron, -9, 0.3, -6.5));
+scene.add(mesh(new THREE.BoxGeometry(0.5, 0.35, 2.3), M.stone, -9.1, 2.05, -6.5));
+wallBox(-10.3, -5.4, 2.6, 0.4, 1.0); wallBox(-10.3, -7.6, 2.6, 0.4, 1.0); wallBox(-11.7, -6.5, 0.4, 2.6, 1.0);
+{ const l = new THREE.PointLight(0xff8a35, 1.2, 4, 2); l.position.set(-10.6, 0.8, -6.5); scene.add(l); }
+
 // tombstones + runes
 const runeMeshes = {};
-for (const t of LEVEL.tombs) {
-  const g = new THREE.Group(); g.position.set(t.x, 0, t.z); g.rotation.y = t.rot;
+for (const t of LEVEL.tombs) {  const g = new THREE.Group(); g.position.set(t.x, 0, t.z); g.rotation.y = t.rot;
   const h = 0.7 + rnd() * 0.25;
   g.add(mesh(new THREE.BoxGeometry(0.8, h, 0.26), M.stone, 0, h/2, 0));
   const top = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.26, 16), M.stone, 0, h, 0); top.rotation.x = Math.PI/2; g.add(top);
@@ -575,7 +714,7 @@ for (const t of LEVEL.tombs) {
 }
 // candles on the first rune's stone and in Rune Row
 function candle(x, z, h) { scene.add(mesh(new THREE.CylinderGeometry(0.035, 0.04, h, 8), M.candle, x, h/2, z)); const f = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), M.flame); f.position.set(x, h + 0.04, z); f.scale.y = 1.6; scene.add(f); return f; }
-const flames = [candle(5.6, 3.9, 0.3), candle(5.75, 3.75, 0.22), candle(-4.4, 5.6, 0.34), candle(-4.25, 5.75, 0.26), candle(-4.6, 5.75, 0.2)];
+const flames = [candle(5.6, 3.9, 0.3), candle(5.75, 3.75, 0.22), candle(-4.4, 5.6, 0.34), candle(-4.25, 5.75, 0.26), candle(-4.6, 5.75, 0.2), candle(-10.9, -5.85, 0.3), candle(-10.9, -7.15, 0.24)];
 
 // lamp circle
 const plinth = new THREE.Group(); plinth.position.set(LEVEL.LC.x, 0, LEVEL.LC.z); scene.add(plinth);
@@ -650,6 +789,120 @@ revealRing.rotation.x = -Math.PI/2; revealRing.position.y = 0.025; scene.add(rev
 const targetRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 40), new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0, depthWrite: false }));
 targetRing.rotation.x = -Math.PI/2; targetRing.position.y = 0.03; scene.add(targetRing);
 
+// ---------- the Gatekeeper (placeholder skeleton) ----------
+const boneMat = new THREE.MeshStandardMaterial({ color: 0xe6dcc4, roughness: 0.75 });
+const boneMatB = boneMat.clone(); boneMatB.transparent = true;
+const socketMat = new THREE.MeshBasicMaterial({ color: 0x14100c });
+const PART_BONE = { armA: 'BONE_A', legB: 'BONE_B', ribs: 'BONE_C' };
+const BONE_PART = { BONE_A: 'armA', BONE_B: 'legB', BONE_C: 'ribs' };
+const BONE_LABEL = { BONE_A: 'Left arm', BONE_B: 'Right leg', BONE_C: 'Ribcage' };
+const BONE_SPAWN_POSE = {
+  BONE_A: [LEVEL.boneSpawns.BONE_A.x, 0.04, LEVEL.boneSpawns.BONE_A.z, Math.PI/2, 2.1, 0],
+  BONE_B: [LEVEL.boneSpawns.BONE_B.x, 0.04, LEVEL.boneSpawns.BONE_B.z, Math.PI/2, -0.6, 0],
+  BONE_C: [LEVEL.boneSpawns.BONE_C.x, 1.02, LEVEL.boneSpawns.BONE_C.z, 0, 0.5, 0]
+};
+const ARC_CTRL = { BONE_A: [3.1, 3.2, -4.0], BONE_B: [1.0, 3.0, -5.6], BONE_C: [-0.6, 3.6, -7.4] }; // A arcs out through the open gate
+function limb(len, mat, foot) {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(0.028, 0.022, len, 7), mat, 0, -len/2, 0));
+  g.add(mesh(new THREE.SphereGeometry(0.036, 8, 6), mat));
+  if (foot) g.add(mesh(new THREE.BoxGeometry(0.07, 0.04, 0.15), mat, 0, -len - 0.01, 0.04));
+  else g.add(mesh(new THREE.SphereGeometry(0.042, 8, 6), mat, 0, -len - 0.02, 0));
+  return g;
+}
+const skelParts = {};
+(function buildSkeleton() {
+  const skull = new THREE.Group();
+  const cr = mesh(new THREE.SphereGeometry(0.13, 18, 14), boneMat); cr.scale.set(1, 1.02, 1.1); skull.add(cr);
+  skull.add(mesh(new THREE.BoxGeometry(0.15, 0.06, 0.11), boneMat, 0, -0.11, 0.04));
+  for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), socketMat); e.position.set(sx*0.048, 0, 0.115); e.scale.z = 0.5; skull.add(e); }
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.017, 0.03, 3), socketMat); nose.position.set(0, -0.046, 0.135); nose.rotation.x = Math.PI; skull.add(nose);
+  const spine = new THREE.Group(); spine.add(mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.44, 7), boneMat));
+  const pelvis = new THREE.Group(); pelvis.add(mesh(new THREE.BoxGeometry(0.28, 0.09, 0.13), boneMat));
+  const ribs = new THREE.Group();
+  [[0.08, 0.12], [0.03, 0.135], [-0.02, 0.13], [-0.07, 0.11]].forEach(([y, r]) => { const t = mesh(new THREE.TorusGeometry(r, 0.016, 6, 18), boneMat, 0, y, 0); t.rotation.x = Math.PI/2; t.scale.y = 0.75; ribs.add(t); });
+  ribs.add(mesh(new THREE.BoxGeometry(0.03, 0.2, 0.03), boneMat, 0, 0, 0.1));
+  const defs = {
+    skull:  [skull,  [0, 1.24, 0, 0, 0, 0],       [0, 0.13, 0.28, 0, 0, 0]],
+    spine:  [spine,  [0, 0.86, 0, 0, 0, 0],       [0.05, 0.03, -0.12, Math.PI/2, 0.4, 0]],
+    pelvis: [pelvis, [0, 0.62, 0, 0, 0, 0],       [-0.06, 0.05, 0.02, 0.25, 0.5, 0]],
+    ribs:   [ribs,   [0, 0.97, 0, 0, 0, 0],       [0.02, 0.1, -0.45, 0, 0.3, 0]],
+    armA:   [limb(0.46, boneMat), [0.18, 1.08, 0, 0, 0, 0.12],  [0.42, 0.04, 0.3, Math.PI/2, 0.9, 0]],
+    armR:   [limb(0.46, boneMat), [-0.18, 1.08, 0, 0, 0, -0.12], [-0.46, 0.04, 0.05, Math.PI/2, -0.4, 0]],
+    legL:   [limb(0.54, boneMat, true), [0.08, 0.58, 0, 0, 0, 0],  [0.38, 0.04, -0.2, Math.PI/2, 1.2, 0]],
+    legB:   [limb(0.54, boneMatB, true), [-0.08, 0.58, 0, 0, 0, 0], [-0.45, 0.04, -0.32, Math.PI/2, -0.8, 0]]
+  };
+  for (const [name, [obj, stand, pile]] of Object.entries(defs)) { scene.add(obj); skelParts[name] = { obj, stand, pile }; }
+})();
+const SKHOME = new THREE.Vector3(LEVEL.skel.x, 0, LEVEL.skel.z);
+const SKQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), LEVEL.skel.yaw);
+const _e = new THREE.Euler(0, 0, 0, 'YXZ');
+const pose = () => ({ p: new THREE.Vector3(), q: new THREE.Quaternion() });
+function local2world(a, out) { out.p.set(a[0], a[1], a[2]).applyQuaternion(SKQ).add(SKHOME); _e.set(a[3], a[4], a[5], 'YXZ'); out.q.setFromEuler(_e).premultiply(SKQ); return out; }
+function worldPose(a, out) { out.p.set(a[0], a[1], a[2]); _e.set(a[3], a[4], a[5], 'YXZ'); out.q.setFromEuler(_e); return out; }
+const skelFx = { startleAt: -1, scatterAt: -1, reassembleAt: -1 };
+const _t = pose(), _a = pose(), _b = pose(), _spin = new THREE.Quaternion(), _X = new THREE.Vector3(1, 0, 0);
+const ease = t => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+function updateSkeleton(dt, force) {
+  const s = state, st = s.npc.state, k = force ? 1 : 1 - Math.exp(-dt * 9);
+  for (const [name, d] of Object.entries(skelParts)) {
+    const bone = PART_BONE[name], loc = bone ? s.bones[bone] : null;
+    let snap = !!force; d.obj.visible = true;
+    if (st === 'Idle' || st === 'Startled') {
+      local2world(d.stand, _t);
+      if (st === 'Idle') { if (name === 'skull') _t.p.y += Math.sin(clock * 2) * 0.012 * motion; }
+      else {
+        const j = Math.max(0, Math.sin(Math.min(1, (clock - skelFx.startleAt) / 0.5) * Math.PI)) * 0.35;
+        if (name === 'armA' || name === 'armR') local2world([d.stand[0], d.stand[1], d.stand[2], 0, 0, (name === 'armA' ? 1 : -1) * 2.6], _t);
+        _t.p.y += j; snap = true;
+      }
+    } else if (st === 'Scattered' || st === 'AwaitingHelp') {
+      if (loc === 'carried') { d.obj.visible = false; continue; }
+      if (!bone || loc === 'delivered') local2world(d.pile, _t);
+      else {
+        worldPose(BONE_SPAWN_POSE[bone], _t);
+        const tt = clock - skelFx.scatterAt;
+        if (skelFx.scatterAt >= 0 && tt < 1.5) { // scripted arc to the spawn point
+          const u = ease(tt / 1.5), c = ARC_CTRL[bone]; local2world(d.stand, _a);
+          const w0 = (1-u)*(1-u), w1 = 2*(1-u)*u, w2 = u*u;
+          _t.p.set(w0*_a.p.x + w1*c[0] + w2*_t.p.x, w0*_a.p.y + w1*c[1] + w2*_t.p.y, w0*_a.p.z + w1*c[2] + w2*_t.p.z);
+          _t.q.multiply(_spin.setFromAxisAngle(_X, (1 - u) * 12)); snap = true;
+        }
+      }
+    } else if (st === 'Reassembling') {
+      const tt = clock - skelFx.reassembleAt; snap = true;
+      local2world(d.pile, _a);
+      let yaw = 0, hop = 0;
+      if (name === 'skull') {
+        if (tt >= 1.0 && tt < 2.4) yaw = Math.PI;                                   // skull goes on backwards
+        else if (tt >= 2.4 && tt < 3.0) { const u = (tt - 2.4) / 0.6; yaw = Math.PI + Math.PI * ease(u); hop = Math.sin(u * Math.PI) * 0.3; }
+      }
+      const scratch = name === 'armR' && tt >= 1.3 && tt < 2.4;                      // ...and gets noticed
+      local2world([d.stand[0], d.stand[1], d.stand[2], d.stand[3], d.stand[4] + yaw, scratch ? -2.3 : d.stand[5]], _b);
+      const u = ease(tt / 1.0);
+      _t.p.lerpVectors(_a.p, _b.p, u); _t.p.y += Math.sin(Math.min(1, tt) * Math.PI) * 0.3 + hop;
+      if (name === 'skull' && tt >= 1.6 && tt < 2.4) _t.p.x += Math.sin(clock * 30) * 0.01;
+      _t.q.copy(_a.q).slerp(_b.q, u);
+    } else { // Reassembled, Thankful, Done
+      local2world(d.stand, _t);
+      if (st === 'Done' && name === 'armR') local2world([d.stand[0], d.stand[1], d.stand[2], 0, 0, -2.5 + Math.sin(clock * 6) * 0.35 * motion], _t);
+    }
+    if (snap) { d.obj.position.copy(_t.p); d.obj.quaternion.copy(_t.q); }
+    else { d.obj.position.lerp(_t.p, k); d.obj.quaternion.slerp(_t.q, k); }
+  }
+  const hidden = s.bones.BONE_B === 'atSpawn' && !s.reveal.RV_BONE_B.revealed;
+  boneMatB.opacity = hidden ? 0.22 : 1; boneMatB.depthWrite = !hidden;
+}
+// Bone B's fog patch and glint
+const glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+glint.position.set(LEVEL.boneSpawns.BONE_B.x, 0.14, LEVEL.boneSpawns.BONE_B.z); glint.scale.setScalar(0.32); scene.add(glint);
+const fogB = [];
+for (let i = 0; i < 7; i++) {
+  const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: 0xa9b6e6, transparent: true, opacity: 0.5, depthWrite: false }));
+  f.position.set(LEVEL.boneSpawns.BONE_B.x + (rnd() - 0.5) * 1.5, 0.25 + rnd() * 0.35, LEVEL.boneSpawns.BONE_B.z + (rnd() - 0.5) * 1.5);
+  f.scale.setScalar(1.4 + rnd() * 0.8); scene.add(f); fogB.push(f);
+}
+
 // ---------- Wick (placeholder: primitives only) ----------
 const W = {};
 (function buildWick() {
@@ -685,7 +938,7 @@ const W = {};
   const lantern = buildLantern(); lantern.position.y = -0.23; lanternPivot.add(lantern);
   Object.assign(W, { root, lean, cloak, eyes, tipPivot, mitL, mitR, tail1, tail2, lanternPivot, lantern, face });
 })();
-const wv = { yaw: Math.atan2(-FWD.x, -FWD.z), x: LEVEL.spawn.x, z: LEVEL.spawn.z, lvx: 0, lvz: 0, swingX: 0, swingZ: 0, swingVX: 0, swingVZ: 0, tip: 0, tipV: 0, anim: null };
+const wv = { h: 0, yaw: Math.atan2(-FWD.x, -FWD.z), x: LEVEL.spawn.x, z: LEVEL.spawn.z, lvx: 0, lvz: 0, swingX: 0, swingZ: 0, swingVX: 0, swingVZ: 0, tip: 0, tipV: 0, anim: null };
 
 // ---------- one-shot effects ----------
 const puffs = [];
@@ -713,18 +966,20 @@ function ensureAudio() {
   const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
   actx = new AC(); master = actx.createGain(); master.gain.value = 0.45; master.connect(actx.destination);
 }
-function tone(f, at, dur, type = 'sine', vol = 0.2, f2) {
+function tone(f, at, dur, type = 'sine', vol = 0.2, f2) { try { toneRaw(f, at, dur, type, vol, f2); } catch (e) { reportError('audio', e); } }
+function toneRaw(f, at, dur, type, vol, f2) {
   if (!actx) return; const t0 = actx.currentTime + at, o = actx.createOscillator(), g = actx.createGain();
   o.type = type; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
   g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + 0.05);
+  o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.05);
 }
-function hiss(at, dur, vol, freq, q = 1) {
+function hiss(at, dur, vol, freq, q = 1) { try { hissRaw(at, dur, vol, freq, q); } catch (e) { reportError('audio', e); } }
+function hissRaw(at, dur, vol, freq, q) {
   if (!actx) return; const t0 = actx.currentTime + at, len = Math.ceil(actx.sampleRate * dur), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; // presentation-only randomness
   const src = actx.createBufferSource(); src.buffer = buf; const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
   const g = actx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  src.connect(f).connect(g).connect(master); src.start(t0);
+  src.connect(f); f.connect(g); g.connect(master); src.start(t0);
 }
 const SFX = {
   pickup() { tone(523, 0, 0.18, 'triangle', 0.18); tone(784, 0.09, 0.3, 'triangle', 0.16); },
@@ -735,6 +990,11 @@ const SFX = {
   reset() { hiss(0, 0.8, 0.35, 300, 0.6); tone(220, 0.05, 0.5, 'sine', 0.12, 98); },
   solved() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i*0.11, 0.55, 'triangle', 0.13)); },
   talk() { tone(660, 0, 0.07, 'square', 0.04); },
+  rattle() { for (let i = 0; i < 9; i++) hiss(i * 0.045, 0.04, 0.25, 2200 + (i % 3) * 600, 4); },
+  clack() { tone(900, 0, 0.05, 'square', 0.06); tone(1300, 0.04, 0.05, 'square', 0.05); },
+  scatter() { SFX.rattle(); hiss(0.2, 0.6, 0.2, 700, 0.8); },
+  deliver() { SFX.clack(); tone(587, 0.08, 0.3, 'triangle', 0.12); },
+  reassemble() { SFX.rattle(); tone(300, 1.0, 0.4, 'sine', 0.12, 620); tone(520, 2.4, 0.4, 'sine', 0.12, 980); hiss(2.45, 0.15, 0.2, 3000, 3); },
   done() { [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, i*0.09, 0.7, 'sine', 0.11)); }
 };
 
@@ -746,7 +1006,7 @@ let debugOn = false, started = false, paused = false;
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'f1'].includes(k)) e.preventDefault();
-  if (!started) { if (k === 'enter' || k === ' ') begin(); return; }
+  if (!started) { if ((k === 'enter' || k === ' ') && !(document.activeElement instanceof HTMLButtonElement)) begin(false); return; }
   if (k === 'f1' || k === '`') { debugOn = !debugOn; $('debug').style.display = debugOn ? 'block' : 'none'; rebuildDebug(); return; }
   if (k === 'escape') { if (!state.done) setPaused(!paused); return; }
   if (e.repeat) return;
@@ -796,7 +1056,7 @@ function rebuildDebug() {
   if (debugLines) { scene.remove(debugLines); debugLines.geometry.dispose(); debugLines = null; }
   if (!debugOn) return;
   const v = [], y = 0.06, circle = (x, z, r) => { for (let i = 0; i < 24; i++) { const a = i/24*Math.PI*2, b = (i + 1)/24*Math.PI*2; v.push(x + Math.cos(a)*r, y, z + Math.sin(a)*r, x + Math.cos(b)*r, y, z + Math.sin(b)*r); } };
-  for (const p of LEVEL.prims) { if (p.tag === 'gate' && state.gateOpen) continue; if (p.kind === 'seg') v.push(p.ax, y, p.az, p.bx, y, p.bz); else circle(p.x, p.z, p.r); }
+  for (const p of LEVEL.prims) { if (inactive(state, p)) continue; if (p.kind === 'seg') v.push(p.ax, y, p.az, p.bx, y, p.bz); else circle(p.x, p.z, p.r); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
   debugLines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xff4fd8, depthTest: false, transparent: true }));
   debugLines.renderOrder = 10; scene.add(debugLines);
@@ -815,8 +1075,11 @@ const debugRanges = (() => {
 let readPlinth = false, firstRevealAt = -1;
 function playAnim(kind, dur) { wv.anim = { kind, t: 0, dur }; }
 function lampWorld(id) { const l = LEVEL.byId[id]; return [l.x, 1.15, l.z]; }
-function handleEvents(evs) {
-  for (const e of evs) switch (e.k) {
+function handleEvents(evs) { // cues are presentation: one failing cue must not swallow the rest
+  for (const e of evs) { try { cue(e); } catch (err) { reportError('cue ' + e.k, err); } }
+}
+function cue(e) {
+  switch (e.k) {
     case 'pickup': SFX.pickup(); playAnim('happy', 0.7); break;
     case 'reveal': {
       SFX.reveal(); const r = LEVEL.runes.find(r => r.id === e.id); puff(r.x, 0.6, r.z, 0x6ff2e2, 8, 0.5);
@@ -829,31 +1092,54 @@ function handleEvents(evs) {
     case 'solved': SFX.solved(); playAnim('celebrate', 0.9); gateAnim = 0; rebuildDebug(); break;
     case 'dialogueStart': readPlinth = true; SFX.talk(); break;
     case 'dialogueNext': SFX.talk(); break;
-    case 'complete': SFX.done(); showComplete(e.ticks); break;
+    case 'startled': skelFx.startleAt = clock; playAnim('surprised', 0.9); SFX.rattle(); break;
+    case 'scatter': skelFx.scatterAt = clock; SFX.scatter(); break;
+    case 'awaiting': case 'talk': case 'thankful': SFX.talk(); break;
+    case 'boneUp': SFX.clack(); playAnim('happy', 0.5); break;
+    case 'deliver': SFX.deliver(); playAnim('happy', 0.5);
+      for (const b of e.bones) { const d = skelParts[BONE_PART[b]]; d.obj.visible = true; d.obj.position.set(wv.x, 0.6 + wv.h, wv.z); } break;
+    case 'reassemble': skelFx.reassembleAt = clock; playAnim('happy', 1.2); SFX.reassemble(); break;
+    case 'exitOpen': exitAnim = 0; rebuildDebug(); SFX.solved(); break;
+    case 'invariant': console.error('bone invariant violated', e.errs); break;
+    case 'complete': teaseAt = clock; showComplete(e.ticks); playAnim('celebrate', 0.9); SFX.done(); break;
   }
 }
 
 // ---------- UI ----------
+const BONE_SVG = '<svg viewBox="0 0 22 12" aria-hidden="true"><g fill="#e6dcc4"><circle cx="3" cy="3" r="2.6"/><circle cx="3" cy="9" r="2.6"/><circle cx="19" cy="3" r="2.6"/><circle cx="19" cy="9" r="2.6"/><rect x="3" y="4" width="16" height="4"/></g></svg>';
 const fmt = ticks => { const s = Math.floor(ticks / 60); return `${Math.floor(s/60)}:${String(s % 60).padStart(2, '0')}`; };
-function showComplete(ticks) { $('time').textContent = fmt(ticks); setTimeout(() => { $('complete').hidden = false; $('again').focus(); }, 900); }
+function showComplete(ticks) { $('time').textContent = fmt(ticks); setTimeout(() => { $('complete').hidden = false; $('again').focus(); }, 2400); }
 function setPaused(p) { paused = p; $('paused').hidden = !p; if (p) { keys.clear(); $('resume').focus(); } else { last = performance.now(); acc = 0; } }
-function begin() { ensureAudio(); started = true; $('title').hidden = true; document.body.classList.add('playing'); last = performance.now(); }
-$('begin').addEventListener('click', begin);
+function begin(ch2) { ensureAudio(); started = true; $('title').hidden = true; document.body.classList.add('playing'); startAt(!!ch2); last = performance.now(); }
+$('begin').addEventListener('click', () => begin(false));
+$('ch2').addEventListener('click', () => begin(true));
 $('resume').addEventListener('click', () => setPaused(false));
-$('again').addEventListener('click', () => {
-  state = newState(); acc = 0; readPlinth = false; firstRevealAt = -1; gateAnim = -1;
-  wv.x = state.x; wv.z = state.z; camTarget.set(state.x, 0, state.z); $('complete').hidden = true; rebuildDebug();
-});
+function startAt(ch2) { // chapter 2 starts from the canonical CP_LAMPS_SOLVED state
+  state = ch2 ? stateAtLampsSolved() : newState(); acc = 0; readPlinth = ch2; firstRevealAt = -1;
+  gateAnim = ch2 ? 1 : -1; exitAnim = -1; teaseAt = -1; skelFx.startleAt = skelFx.scatterAt = skelFx.reassembleAt = -1;
+  wv.x = state.x; wv.z = state.z; wv.h = 0; wv.anim = null; camTarget.set(state.x, 0, state.z);
+  $('complete').hidden = true; rebuildDebug(); updateSkeleton(0, true);
+}
+$('again').addEventListener('click', () => startAt(false));
+$('again2').addEventListener('click', () => startAt(true));
 document.addEventListener('visibilitychange', () => { if (document.hidden && started && !state.done) setPaused(true); });
 $('begin').focus();
 
 let hintText = '';
 function currentHint() {
-  if (state.done || state.dialogue) return '';
-  const P = state.puzzle, revealed = LEVEL.runes.filter(r => state.reveal[r.id].revealed).length;
+  if (state.done || state.dialogue || state.beat) return '';
+  const P = state.puzzle, N = state.npc, revealed = LEVEL.runes.filter(r => state.reveal[r.id].revealed).length;
+  if (N.state === 'Done') return 'The exit gate is open.';
+  if (N.state === 'AwaitingHelp') {
+    const carried = LEVEL.boneIds.filter(id => state.bones[id] === 'carried').length;
+    const delivered = LEVEL.boneIds.filter(id => state.bones[id] === 'delivered').length;
+    if (carried) return 'Bring the bones back to the skull.';
+    return delivered ? `${delivered} of 3 bones returned. The skull has suggestions.` : 'Talk to the skull. It has suggestions.';
+  }
+  if (N.state !== 'Idle') return '';
   if (!state.hasLantern) return isTouch ? 'Drag the left pad to float. Your lantern is on the stump.' : 'Float with WASD. Your lantern is on the stump.';
   if (revealed === 0) return isTouch ? 'Hold Lantern near the lone gravestone.' : 'Hold Space near the lone gravestone.';
-  if (P.state === 'Solved') return state.beat ? '' : 'The courtyard gate is open.';
+  if (P.state === 'Solved') return 'The courtyard gate is open. Someone is waiting inside.';
   if (P.state === 'Resetting') return 'Poof. Try another order.';
   if (revealed < 3) return state.tick - firstRevealAt < 300 ? 'Some stones only speak in lantern light.' : `${revealed} of 3 runes found. The rest hide in the rows of stones.`;
   return readPlinth ? 'Light the lamps in order.' : 'All three runes found. The plinth has something to say.';
@@ -864,16 +1150,18 @@ function place(el, x, y, z, lift) {
 }
 
 // ---------- render ----------
-let state = newState(), acc = 0, last = performance.now(), gateAnim = -1, fpsAvg = 60, clock = 0;
+let state = newState(), acc = 0, last = performance.now(), gateAnim = -1, exitAnim = -1, teaseAt = -1, fpsAvg = 60, clock = 0, bonesKey = null;
+updateSkeleton(0, true);
 function render(dt, alpha) {
   clock += dt;
   const s = state;
   // Wick position: interpolate between the last two ticks
   wv.x = s.px + (s.x - s.px) * alpha; wv.z = s.pz + (s.z - s.pz) * alpha;
+  wv.h += (groundH(wv.x, wv.z) - wv.h) * Math.min(1, dt * 14);
   const speed = Math.hypot(s.vx, s.vz), sn = Math.min(1, speed / C.dash);
   const targetYaw = Math.atan2(s.fx, s.fz); let dy = targetYaw - wv.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   const yawRate = dy * Math.min(1, dt * 12); wv.yaw += yawRate;
-  W.root.position.set(wv.x, 0.3 + Math.sin(clock * Math.PI * 2 / 2.2) * 0.05 * motion * (1 - 0.6*sn), wv.z);
+  W.root.position.set(wv.x, wv.h + 0.3 + Math.sin(clock * Math.PI * 2 / 2.2) * 0.05 * motion * (1 - 0.6*sn), wv.z);
   W.root.rotation.y = wv.yaw;
   W.lean.rotation.x = sn * 0.21 * motion;
   W.lean.rotation.z = THREE.MathUtils.clamp(-yawRate * 3, -0.14, 0.14) * motion;
@@ -900,6 +1188,7 @@ function render(dt, alpha) {
     if (a.kind === 'shrug') { mL = [0.3, 0.42, 0.12]; mR = [-0.3, 0.42, 0.12]; headTilt = 0.25 * env; }
     if (a.kind === 'scared') { mL = [0.07, 0.58, 0.24]; mR = [-0.07, 0.58, 0.24]; W.lean.position.x = Math.sin(clock * 60) * 0.012 * motion; eyeS = [0.6, 0.6]; }
     if (a.kind === 'happy') { eyeS = [1.1, 0.3]; bob = 0.08 * env; }
+    if (a.kind === 'surprised') { eyeS = [1.4, 1.4]; bob = 0.22 * env; W.lean.rotation.x -= 0.35 * env; mL = [0.3, 0.5, 0.1]; mR = [-0.3, 0.5, 0.1]; }
     if (a.kind === 'curious') { headTilt = 0.18 * env; eyeS = [1.15, 1.15]; }
     if (a.kind === 'celebrate') { spin = Math.PI * 2 * Math.min(1, k); bob = 0.2 * env; eyeS = [1.1, 0.3]; mL = [0.3, 0.45, 0.05]; mR = [-0.3, 0.45, 0.05]; }
     const blend = Math.min(1, Math.min(a.t, a.dur - a.t) / 0.15);
@@ -926,7 +1215,7 @@ function render(dt, alpha) {
     propLantern.userData.glass.getWorldPosition(lanternLight.position); lanternLight.intensity = 1.1 * flick; lanternLight.distance = 3.2;
   }
   const R = C.lanternR * raise;
-  revealRing.visible = R > 0.05; revealRing.scale.setScalar(Math.max(R, 0.01)); revealRing.position.x = wv.x; revealRing.position.z = wv.z;
+  revealRing.visible = R > 0.05; revealRing.scale.setScalar(Math.max(R, 0.01)); revealRing.position.set(wv.x, wv.h + 0.025, wv.z);
   revealRing.material.opacity = 0.22 * raise;
   for (const f of flames) f.scale.y = 1.6 * flick;
   candleLights.forEach((l, i) => l.intensity = 1.4 * (0.93 + Math.sin(clock * (13 + i*4)) * 0.07));
@@ -946,16 +1235,25 @@ function render(dt, alpha) {
   }
   if (gateAnim >= 0) { gateAnim = Math.min(1, gateAnim + dt); gate.position.y = -1.75 * (1 - Math.pow(1 - gateAnim, 3)); }
   else gate.position.y = 0;
+  if (exitAnim >= 0) { exitAnim = Math.min(1, exitAnim + dt); exitGate.position.y = -1.75 * (1 - Math.pow(1 - exitAnim, 3)); }
+  else exitGate.position.y = 0;
+  try { updateSkeleton(dt, false); } catch (e) { reportError('skeleton', e); }
+  const bHidden = s.bones.BONE_B === 'atSpawn' && !s.reveal.RV_BONE_B.revealed && (s.npc.state === 'AwaitingHelp' || clock - skelFx.scatterAt > 1.5);
+  glint.material.opacity = bHidden ? Math.pow(Math.max(0, Math.sin(clock * 2.3)), 12) * 0.9 : 0;
+  for (const f of fogB) f.material.opacity += ((s.reveal.RV_BONE_B.revealed ? 0.07 : 0.5) - f.material.opacity) * Math.min(1, dt * 3);
+  const carriedIds = LEVEL.boneIds.filter(id => s.bones[id] === 'carried'), key = carriedIds.join();
+  if (key !== bonesKey) { bonesKey = key; $('bones').innerHTML = carriedIds.map(id => `<div class="chip">${BONE_SVG}${BONE_LABEL[id]}</div>`).join(''); }
 
   // camera: dead zone + damped follow; scripted framing on the gate during the beat
-  let fx = wv.x, fz = wv.z;
-  if (s.beat) { fx = LEVEL.gatePos.x; fz = LEVEL.gatePos.z; }
+  let fx = wv.x, fz = wv.z; const scripted = !!(s.beat && s.beat.focus) || teaseAt >= 0;
+  if (s.beat && s.beat.focus) { fx = s.beat.focus[0]; fz = s.beat.focus[1]; }
+  else if (teaseAt >= 0) { fx = -11.5; fz = -7.5; } // end beat: a peek at what lies past the gate
   const offX = fx - camTarget.x, offZ = fz - camTarget.z;
   const scrX = offX*RIGHT.x + offZ*RIGHT.z, scrY = (offX*FWD.x + offZ*FWD.z) * 0.577;
   const halfW = camera.right, halfH = camera.top, dzx = halfW * 0.15, dzy = halfH * 0.15;
-  const ex = s.beat ? scrX : Math.sign(scrX) * Math.max(0, Math.abs(scrX) - dzx);
-  const ey = s.beat ? scrY : Math.sign(scrY) * Math.max(0, Math.abs(scrY) - dzy);
-  const k = s.beat && reduced ? 1 : 1 - Math.exp(-dt / 0.12);
+  const ex = scripted ? scrX : Math.sign(scrX) * Math.max(0, Math.abs(scrX) - dzx);
+  const ey = scripted ? scrY : Math.sign(scrY) * Math.max(0, Math.abs(scrY) - dzy);
+  const k = scripted && reduced ? 1 : 1 - Math.exp(-dt / 0.12);
   const gx = RIGHT.x*ex + FWD.x*ey/0.577, gz = RIGHT.z*ex + FWD.z*ey/0.577;
   camTarget.x += gx * k; camTarget.z += gz * k;
   camera.position.copy(camTarget).add(CAM_OFF); camera.lookAt(camTarget);
@@ -971,12 +1269,18 @@ function render(dt, alpha) {
   const prompt = $('prompt');
   if (s.target && !s.dialogue && !s.beat) {
     const it = LEVEL.byId[s.target];
-    targetRing.position.set(it.x, 0.03, it.z); targetRing.material.opacity = 0.55 + Math.sin(clock * 5) * 0.2;
+    targetRing.position.set(it.x, 0, it.z); targetRing.material.opacity = 0.55 + Math.sin(clock * 5) * 0.2;
     prompt.style.display = 'flex'; $('verb').textContent = it.verb;
-    place(prompt, it.x, it.kind === 'lamp' ? 1.5 : 0.9, it.z, 0.25);
+    const py = it.kind === 'lamp' ? 1.5 : it.kind === 'npc' ? 0.55 : it.kind === 'bone' ? groundH(it.x, it.z) + 0.45 : 0.9;
+    targetRing.position.y = groundH(it.x, it.z) + 0.03;
+    place(prompt, it.x, py, it.z, 0.25);
   } else { targetRing.material.opacity = 0; prompt.style.display = 'none'; }
   const bubble = $('bubble');
-  if (s.dialogue) { bubble.style.display = 'block'; $('line').textContent = s.dialogue.lines[s.dialogue.i]; place(bubble, LEVEL.LC.x, 0.7, LEVEL.LC.z, 0.5); }
+  if (s.dialogue) {
+    bubble.style.display = 'block'; $('line').textContent = s.dialogue.lines[s.dialogue.i];
+    if (s.dialogue.speaker === 'NPC_GATEKEEPER') { const sp = skelParts.skull.obj.position; place(bubble, sp.x, sp.y, sp.z, 0.3); }
+    else place(bubble, LEVEL.LC.x, 0.7, LEVEL.LC.z, 0.5);
+  }
   else bubble.style.display = 'none';
   const h = started ? currentHint() : '';
   const hint = $('hint');
@@ -987,7 +1291,7 @@ function render(dt, alpha) {
   if (debugOn) {
     debugRanges.userData.wick.position.set(s.x, 0.08, s.z);
     fpsAvg += ((1 / Math.max(dt, 1e-3)) - fpsAvg) * 0.05;
-    $('debug').textContent = `tick ${s.tick}   fps ${fpsAvg.toFixed(0)}\npos ${s.x.toFixed(2)}, ${s.z.toFixed(2)}   speed ${speed.toFixed(2)} m/s\nlantern r ${R.toFixed(2)} m   target ${s.target || '—'}\npuzzle ${s.puzzle.state}  k=${s.puzzle.k}\ndepenetrations ${s.depen} (should stay 0)\nplay ${fmt(s.playTicks)} (${s.playTicks} ticks)`;
+    $('debug').textContent = `tick ${s.tick}   fps ${fpsAvg.toFixed(0)}\npos ${s.x.toFixed(2)}, ${s.z.toFixed(2)}   speed ${speed.toFixed(2)} m/s\nlantern r ${R.toFixed(2)} m   target ${s.target || '—'}\npuzzle ${s.puzzle.state}  k=${s.puzzle.k}\ndepenetrations ${s.depen} (should stay 0)\nnpc ${s.npc.state}   bones ${LEVEL.boneIds.map(id => id.slice(5) + ':' + s.bones[id]).join(' ')}\ninvariant violations ${s.invariantErrors} (should stay 0)\nplay ${fmt(s.playTicks)} (${s.playTicks} ticks)`;
   }
   renderer.render(scene, camera);
 }
@@ -1001,7 +1305,8 @@ function frame(now) {
     if (n === 6) acc = 0; // v0.3.1 A5: catch-up capped at 6 ticks per frame; the excess is dropped
   }
   render(dt, Math.min(1, acc / DT));
-}requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
 </script>
 </body>
 </html>
