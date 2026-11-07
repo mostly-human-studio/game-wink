@@ -68,6 +68,10 @@ button.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.
 #err{position:absolute;left:10px;right:10px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 170px);z-index:20;display:none;
   background:rgba(60,10,16,.92);color:#ffd9d9;border:1px solid #ff8a8a;border-radius:10px;padding:10px 12px;
   font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:30vh;overflow:auto;pointer-events:auto}
+#chapter{position:absolute;left:50%;top:22vh;transform:translateX(-50%);text-align:center;pointer-events:none;opacity:0;transition:opacity .7s;
+  text-shadow:0 2px 14px #000,0 0 4px #000;z-index:4;width:max-content;max-width:90vw}
+#chapter .over{font:600 13px var(--sans);letter-spacing:.22em;text-transform:uppercase;opacity:.75}
+#chapter .name{font-size:clamp(30px,6.5vw,46px);line-height:1.1}
 #tease{position:absolute;left:50%;bottom:max(14vh,90px);transform:translateX(-50%);text-align:center;pointer-events:none;
   opacity:0;transition:opacity .8s;text-shadow:0 2px 14px #000,0 0 4px #000;z-index:4}
 #tease .over{font:600 13px var(--sans);letter-spacing:.22em;text-transform:uppercase;opacity:.7}
@@ -85,6 +89,7 @@ button.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.
 <div id="bones"></div>
 <div id="debug"></div>
 <div id="err" role="alert"></div>
+<div id="chapter" aria-live="polite"><div class="over" id="chNum"></div><div class="name" id="chName"></div></div>
 <div id="tease" aria-live="polite"><div class="over">Next</div><div class="name">Ravenhold Keep</div><div class="sub">Somebody left the lights on.</div></div>
 
 <div id="touch">
@@ -99,7 +104,7 @@ button.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.
   <div class="card">
     <h1>Little Haunts</h1>
     <p class="tagline">Small monsters. Big trouble.</p>
-    <p>A graybox of the Forgotten Graveyard. In chapter 1, Wick's lantern finds hidden runes and three lamps want lighting in the right order. In chapter 2, a skeleton has gone to pieces, and it's partly Wick's fault. In chapter 3, the way out is open, and the graveyard is keeping one last secret.</p>
+    <p>A graybox of the Forgotten Graveyard. In chapter 1, Wick's lantern finds hidden runes and three lamps want lighting in the right order. In chapter 2, a skeleton has gone to pieces, and it's partly Wick's fault. In chapter 3, the exit gate only opens for the dead, and someone is crying behind a wall.</p>
     <dl class="desk-only">
       <dt>WASD</dt><dd>Float (arrow keys work too)</dd>
       <dt>Shift</dt><dd>Dash</dd>
@@ -127,7 +132,7 @@ button.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.
     <h2>Out the gate.</h2>
     <p class="time" id="time">0:00</p>
     <p id="record">Play time, counted in simulation ticks.</p>
-    <p>Bones returned: 3 of 3. Skull: facing forward.<br>Lost souls found: <span id="souls">0</span> of 1.</p>
+    <p>Bones returned: 3 of 3. Skull: facing forward.<br>Lost souls brought home: 1 of 1.</p>
     <div class="btns"><button class="go" id="again">Play again</button><button class="go ghost" id="again2">Chapter 2</button><button class="go ghost" id="again3">Chapter 3</button></div>
   </div>
 </div>
@@ -257,7 +262,11 @@ const LEVEL = (() => {
     dialogue: {
       D_PLINTH: ['Three lamps for three stones.', 'Count the marks on each stone. The fewest burns first.'],
       D_SKULL_INTRO: ['Well. That went badly.', "Don't just float there. Help me find my bones!"],
-      D_THANKS: ['Good as new. Mostly.', 'The exit gate is yours, little light. Off you go.'],
+      D_THANKS: ['Good as new. Mostly.', "One snag. The exit gate only opens for the dead, and you're not dead enough.",
+                 "Someone has been crying behind the west wall of the rune row all night. Find them, and bring them here."],
+      D_SOUL_HOME: ['There you are, little one. Everyone has been worried sick. Well. Worried.', 'The gate knows its own. Off you both go.'],
+      soulHints: ['Behind the west wall of the rune row. Hold your lantern to the stones.', 'Walls in this graveyard are mostly cracks holding hands. Give one a push.'],
+      D_SOUL_WAIT: ['The little one is shy. It only comes out in lantern light.'],
       D_DONE: ["Go on. I'll keep an eye socket on things."],
       hints: {
         BONE_B: ['My leg! Something is glinting in the fog over there.', 'Hold your lantern up to the fog. My bones are shy.'],
@@ -283,7 +292,7 @@ function newState() {
     npc: { state: 'Idle', until: 0, hintBone: null, hintIdx: 0 },
     exitOpen: false, invariantErrors: 0,
     secret: 'Hidden',                 // SC_CRACKED_WALL: Hidden → Revealed → Open (§9.3)
-    souls: { LOST_SOUL_01: false }    // collectibles: kept across Restart Level (§7.6)
+    soul: 'free'                      // LOST_SOUL_01: free → carried → home. Main path since v0.3.2 (resets with the level)
   };
 }
 function stateAtLampsSolved() { // canonical CP_LAMPS_SOLVED rebuild (§7.7): lamps lit, gate open, skeleton Idle
@@ -294,10 +303,10 @@ function stateAtLampsSolved() { // canonical CP_LAMPS_SOLVED rebuild (§7.7): la
   s.x = s.px = 0.4; s.z = s.pz = -2.3; s.fx = FWD.x; s.fz = FWD.z;
   return s;
 }
-function stateAtGateOpen() { // canonical CP_GATE_OPEN rebuild (§7.7): bones home, skeleton Done, exit gate open
+function stateAtSoulSearch() { // canonical CP_SOUL_SEARCH rebuild (v0.3.2): bones home, skeleton WaitingSoul, exit gate shut
   const s = stateAtLampsSolved();
   for (const id of LEVEL.boneIds) s.bones[id] = 'delivered';
-  s.npc.state = 'Done'; s.exitOpen = true;
+  s.npc.state = 'WaitingSoul';
   s.x = s.px = -3.6; s.z = s.pz = 0.4; s.fx = -RIGHT.x; s.fz = -RIGHT.z;
   return s;
 }
@@ -388,9 +397,9 @@ function eligible(s, it) {
   if (it.kind === 'pickup') return !s.hasLantern;
   if (it.kind === 'plinth') return true;
   if (it.kind === 'bone') return s.bones[it.bone] === 'atSpawn';
-  if (it.kind === 'npc') return s.npc.state === 'AwaitingHelp' || s.npc.state === 'Done'; // v0.3.1 A7
+  if (it.kind === 'npc') return ['AwaitingHelp', 'WaitingSoul', 'Done'].includes(s.npc.state); // v0.3.1 A7, v0.3.2
   if (it.kind === 'secretWall') return s.secret === 'Revealed';
-  if (it.kind === 'soul') return s.secret === 'Open' && !s.souls[it.soul];
+  if (it.kind === 'soul') return s.secret === 'Open' && s.soul === 'free';
   const P = s.puzzle; // v0.3.1 A2: no lamp is targetable while Resetting
   return s.hasLantern && (P.state === 'Ready' || P.state === 'Sequencing') && !P.lit[it.id];
 }
@@ -416,6 +425,12 @@ function say(s, lines, onEnd) { s.dialogue = { lines, i: 0, speaker: 'NPC_GATEKE
 function talk(s, ev) {
   const N = s.npc;
   if (N.state === 'Done') { say(s, LEVEL.dialogue.D_DONE); ev.push({ k: 'talk' }); return; }
+  if (N.state === 'WaitingSoul') {
+    if (s.soul === 'carried') { s.soul = 'home'; ev.push({ k: 'soulHome' }); say(s, LEVEL.dialogue.D_SOUL_HOME, 'soulHome'); return; } // carried → home
+    const lines = s.secret === 'Open' ? LEVEL.dialogue.D_SOUL_WAIT : LEVEL.dialogue.soulHints;
+    N.hintIdx = N.hintBone === 'SOUL' ? (N.hintIdx + 1) % lines.length : 0; N.hintBone = 'SOUL';
+    say(s, [lines[N.hintIdx]]); ev.push({ k: 'talk' }); return;
+  }
   const carried = LEVEL.boneIds.filter(id => s.bones[id] === 'carried');
   if (carried.length === 0) { // v0.3.1 A3: hint at the first outstanding bone in hintOrder; repeats cycle its lines
     const bone = LEVEL.hintOrder.find(id => s.bones[id] === 'atSpawn'), lines = LEVEL.dialogue.hints[bone];
@@ -437,13 +452,18 @@ function checkInvariants(s) { // §9.2.1, checked after every tick
   const del = L.filter(l => l === 'delivered').length;
   if ((st === 'Idle' || st === 'Startled') && !L.every(l => l === 'onSkeleton')) errs.push('bones left early');
   if ((st === 'Scattered' || st === 'AwaitingHelp') && (L.includes('onSkeleton') || del >= 3)) errs.push('scatter state');
-  if (['Reassembling', 'Reassembled', 'Thankful', 'Done'].includes(st) && del !== 3) errs.push('reassembled short');
+  if (['Reassembling', 'Reassembled', 'Thankful', 'WaitingSoul', 'Done'].includes(st) && del !== 3) errs.push('reassembled short');
   for (const it of LEVEL.interactables) if (it.kind === 'bone' && eligible(s, it) && s.bones[it.bone] !== 'atSpawn') errs.push('phantom pickup');
   // §9.3: the wall can't skip a state, and the alcove is unreachable while it stands
   if (!['Hidden', 'Revealed', 'Open'].includes(s.secret)) errs.push('secret state');
   if (s.secret !== 'Hidden' && !s.reveal.RV_CRACKED_WALL.revealed) errs.push('secret unrevealed');
   if (s.secret !== 'Open' && inBox(s.x, s.z, LEVEL.alcove)) errs.push('inside sealed alcove');
   if (s.secret !== 'Open' && s.reveal.LOST_SOUL_01.litT > 0) errs.push('light through wall');
+  if (!['free', 'carried', 'home'].includes(s.soul)) errs.push('soul state');
+  if (s.soul !== 'free' && s.secret !== 'Open') errs.push('soul escaped a sealed wall');
+  if (s.soul === 'home' && !['WaitingSoul', 'Done'].includes(st)) errs.push('soul home early');
+  if (s.exitOpen !== (st === 'Done')) errs.push('exit gate out of step');
+  if (s.exitOpen && s.soul !== 'home') errs.push('exit open without the soul');
   return errs;
 }
 
@@ -457,9 +477,13 @@ function step(s, I) {
       s.dialogue.i++;
       if (s.dialogue.i >= s.dialogue.lines.length) {
         const onEnd = s.dialogue.onEnd; s.dialogue = null; if (I.lantern) s.needRelease = true; ev.push({ k: 'dialogueEnd' });
-        if (onEnd === 'thanks') { // Thankful → Done: open the exit gate, frame it
+        if (onEnd === 'thanks') { // Thankful → WaitingSoul: frame the west wall (v0.3.2)
+          s.npc.state = 'WaitingSoul';
+          if (s.soul === 'carried') { s.soul = 'home'; ev.push({ k: 'soulHome' }); say(s, LEVEL.dialogue.D_SOUL_HOME, 'soulHome'); }
+          else { s.beat = { until: s.tick + C.beatT, focus: [LEVEL.secretWall.x, LEVEL.secretWall.z] }; ev.push({ k: 'chapter3' }); }
+        } else if (onEnd === 'soulHome') { // WaitingSoul → Done: the gate opens for the soul, frame it
           s.npc.state = 'Done'; s.exitOpen = true;
-          s.beat = { until: s.tick + C.beatT, focus: [LEVEL.exitGatePos.x, LEVEL.exitGatePos.z] }; ev.push({ k: 'exitOpen' });
+          s.beat = { until: s.tick + C.beatT + T(500), focus: [LEVEL.exitGatePos.x, LEVEL.exitGatePos.z] }; ev.push({ k: 'exitOpen' });
         }
       }
       else ev.push({ k: 'dialogueNext' });
@@ -519,7 +543,7 @@ function step(s, I) {
     else if (it.kind === 'bone') { s.bones[it.bone] = 'carried'; s.target = null; ev.push({ k: 'boneUp', bone: it.bone }); } // atSpawn → carried
     else if (it.kind === 'npc') talk(s, ev);
     else if (it.kind === 'secretWall') { s.secret = 'Open'; s.target = null; ev.push({ k: 'secretOpen' }); }           // Revealed → Open (secret_open saved immediately)
-    else if (it.kind === 'soul') { s.souls[it.soul] = true; s.target = null; ev.push({ k: 'soul', id: it.soul }); }    // collected (saved immediately)
+    else if (it.kind === 'soul') { s.soul = 'carried'; s.target = null; ev.push({ k: 'soul', id: it.soul }); }          // free → carried: it follows Wick
     else lampPressed(s, it, ev);
   }
 
@@ -989,8 +1013,9 @@ const soulView = (() => {
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: 0x7fd8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
   glow.scale.setScalar(1.0); g.add(glow);
   const light = new THREE.PointLight(0x8fe6ff, 0, 3.2, 2); scene.add(light); // fixed light count: added at load, never removed
-  return { g, mat, glow, light, level: 0, collectAt: -1 };
+  return { g, mat, glow, light, level: 0, collectAt: -1, pos: new THREE.Vector3(LEVEL.soul.x, 0.55, LEVEL.soul.z) };
 })();
+const _soulT = new THREE.Vector3();
 
 // ---------- Wick (placeholder: primitives only) ----------
 const W = {};
@@ -1183,7 +1208,7 @@ function cue(e) {
     case 'wrongPuff': SFX.wrong(); puff(...lampWorld(e.id), 0x9aa0b4, 7, 0.55); playAnim('shrug', 0.6); break;
     case 'blocked': SFX.fizzle(); puff(...lampWorld(e.id), 0x8a90a0, 3, 0.25); playAnim('shrug', 0.6); break;
     case 'reset': SFX.reset(); for (const id of e.lamps) puff(...lampWorld(id), 0x9aa0b4, 9, 0.7); playAnim('scared', 1.0); break;
-    case 'solved': SFX.solved(); playAnim('celebrate', 0.9); gateAnim = 0; rebuildDebug(); break;
+    case 'solved': SFX.solved(); playAnim('celebrate', 0.9); gateAnim = 0; rebuildDebug(); chapterCard(2); break;
     case 'dialogueStart': readPlinth = true; SFX.talk(); break;
     case 'dialogueNext': SFX.talk(); break;
     case 'startled': skelFx.startleAt = clock; playAnim('surprised', 0.9); SFX.rattle(); break;
@@ -1197,7 +1222,9 @@ function cue(e) {
     case 'shimmer': SFX.shimmer(); break;
     case 'secretOpen': secretAnim = 0; rebuildDebug(); SFX.rumble(); playAnim('surprised', 0.9);
       for (let z = 0.2; z < 2.2; z += 0.5) puff(-8.9, 0.2, z, 0x9aa0b4, 3, 0.6); break;
-    case 'soul': soulView.collectAt = clock; SFX.soul(); playAnim('celebrate', 0.9); break;
+    case 'soul': SFX.soul(); playAnim('celebrate', 0.9); break;
+    case 'chapter3': chapterCard(3); SFX.solved(); break;
+    case 'soulHome': SFX.soul(); playAnim('happy', 0.9); break;
     case 'invariant': console.error('invariant violated', e.errs); break;
     case 'complete': teaseAt = clock; showComplete(e.ticks); playAnim('celebrate', 0.9); SFX.done(); SFX.tease(); break;
   }
@@ -1213,7 +1240,6 @@ function showComplete(ticks) {
   $('time').textContent = fmt(ticks);
   if (chapter === 1) { if (bestTicks === null || ticks < bestTicks) bestTicks = ticks; $('record').textContent = `Play time, counted in simulation ticks. Best: ${fmt(bestTicks)}.`; }
   else $('record').textContent = `Play time from the start of chapter ${chapter}, so it doesn't count toward the best time.`;
-  $('souls').textContent = LEVEL.soulIds.filter(id => state.souls[id]).length;
   completeTimer = setTimeout(revealComplete, (reduced ? 3.2 : TEASE_S) * 1000);
 }
 function revealComplete() { clearTimeout(completeTimer); if (!$('complete').hidden) return; $('complete').hidden = false; $('tease').style.opacity = 0; $('again').focus(); }
@@ -1227,14 +1253,17 @@ $('ch2').addEventListener('click', () => begin(2));
 $('ch3').addEventListener('click', () => begin(3));
 $('resume').addEventListener('click', () => setPaused(false));
 function startAt(ch) { // chapters 2 and 3 start from the canonical CP_LAMPS_SOLVED and CP_GATE_OPEN states
-  const souls = { ...state.souls }; // Restart Level keeps collectibles (§7.6); a page reload is a new game in the demo
-  state = ch === 3 ? stateAtGateOpen() : ch === 2 ? stateAtLampsSolved() : newState(); state.souls = souls;
+  state = ch === 3 ? stateAtSoulSearch() : ch === 2 ? stateAtLampsSolved() : newState(); // the soul is main path now, so it resets too (v0.3.2)
   chapter = ch; acc = 0; readPlinth = ch >= 2; firstRevealAt = -1;
-  gateAnim = ch >= 2 ? 1 : -1; exitAnim = ch === 3 ? 1 : -1; secretAnim = -1; teaseAt = -1; soulView.collectAt = -1;
+  gateAnim = ch >= 2 ? 1 : -1; exitAnim = -1; secretAnim = -1; teaseAt = -1; soulView.collectAt = -1; soulView.pos.set(LEVEL.soul.x, 0.55, LEVEL.soul.z);
   skelFx.startleAt = skelFx.scatterAt = skelFx.reassembleAt = -1;
   wv.x = state.x; wv.z = state.z; wv.h = 0; wv.anim = null; camTarget.set(state.x, 0, state.z);
   clearTimeout(completeTimer); $('complete').hidden = true; $('tease').style.opacity = 0; rebuildDebug(); updateSkeleton(0, true);
+  chapterCard(ch);
 }
+const CHAPTERS = { 1: 'Three Lamps', 2: 'A Skeleton in Pieces', 3: 'The Crack in the Wall' };
+let chapterTimer = 0;
+function chapterCard(n) { $('chNum').textContent = 'Chapter ' + n; $('chName').textContent = CHAPTERS[n]; $('chapter').style.opacity = 1; clearTimeout(chapterTimer); chapterTimer = setTimeout(() => $('chapter').style.opacity = 0, 3200); }
 $('again').addEventListener('click', () => startAt(1));
 $('again2').addEventListener('click', () => startAt(2));
 $('again3').addEventListener('click', () => startAt(3));
@@ -1244,10 +1273,16 @@ $('begin').focus();
 let hintText = '';
 function currentHint() {
   if (state.done || state.dialogue || state.beat) return '';
-  if (inBox(state.x, state.z, LEVEL.alcove) && !state.souls.LOST_SOUL_01)
+  if (inBox(state.x, state.z, LEVEL.alcove) && state.soul === 'free')
     return state.reveal.LOST_SOUL_01.revealed ? '' : 'Something in here only shows itself in lantern light.';
   const P = state.puzzle, N = state.npc, revealed = LEVEL.runes.filter(r => state.reveal[r.id].revealed).length;
   if (N.state === 'Done') return 'The exit gate is open.';
+  if (N.state === 'WaitingSoul') {
+    if (state.soul === 'carried') return 'Bring the lost soul to the Gatekeeper.';
+    if (state.secret === 'Hidden') return isTouch ? 'Someone is crying behind the west wall of the rune row. Try the Lantern there.' : 'Someone is crying behind the west wall of the rune row. Try the lantern there.';
+    if (state.secret === 'Revealed') return 'Push the cracked wall.';
+    return 'The lost soul only shows itself in lantern light.';
+  }
   if (N.state === 'AwaitingHelp') {
     const carried = LEVEL.boneIds.filter(id => state.bones[id] === 'carried').length;
     const delivered = LEVEL.boneIds.filter(id => state.bones[id] === 'delivered').length;
@@ -1361,25 +1396,24 @@ function render(dt, alpha) {
   if (secretAnim >= 0) { secretAnim = Math.min(1, secretAnim + dt / 1.2); slab.position.y = -1.36 * ease(secretAnim); slab.position.x = Math.sin(clock * 47) * 0.02 * (1 - secretAnim) * motion; }
   else { slab.position.set(0, s.secret === 'Open' ? -1.36 : 0, 0); }
   slab.visible = slab.position.y > -1.35;
-  // the lost soul: faint shimmer always; full only while lit; flies to Wick when caught
-  { const st = s.reveal.LOST_SOUL_01, caught = s.souls.LOST_SOUL_01, v = soulView;
+  // the lost soul: faint shimmer until lit; once caught it follows Wick; brought home, it waits at the exit gate
+  { const st = s.reveal.LOST_SOUL_01, v = soulView, bob = Math.sin(clock * 2.1) * 0.06 * motion;
     const twinkle = 0.07 + 0.22 * Math.pow(Math.max(0, Math.sin(clock * 1.7)), 10);
-    const target = st.revealed ? 1 : (st.litT > 0 ? 0.25 + 0.5 * st.litT / C.dwell : 0);
+    const target = s.soul !== 'free' ? 1 : st.revealed ? 1 : (st.litT > 0 ? 0.25 + 0.5 * st.litT / C.dwell : 0);
     v.level += (target - v.level) * Math.min(1, dt * 6);
-    let show = !caught, fade = 1;
-    v.g.position.set(LEVEL.soul.x, 0.55 + Math.sin(clock * 2.1) * 0.06 * motion, LEVEL.soul.z);
-    if (caught && v.collectAt >= 0) {
-      const u = Math.min(1, (clock - v.collectAt) / 0.9); show = u < 1; fade = 1 - u; v.level = 1;
-      const e = ease(u); v.g.position.set(LEVEL.soul.x + (wv.x - LEVEL.soul.x) * e, 0.55 + Math.sin(u * Math.PI) * 0.7 + (wv.h + 0.5 - 0.55) * e, LEVEL.soul.z + (wv.z - LEVEL.soul.z) * e);
-      v.g.scale.setScalar(1 - 0.7 * e);
-    } else v.g.scale.setScalar(1);
-    v.g.visible = show;
+    let tx = LEVEL.soul.x, ty = 0.55 + bob, tz = LEVEL.soul.z, follow = 3.5;
+    if (s.soul === 'carried') { // trails just behind Wick's shoulder
+      const yaw = wv.yaw, side = 0.42, back = 0.38;
+      tx = wv.x - Math.sin(yaw) * back + Math.cos(yaw) * side; tz = wv.z - Math.cos(yaw) * back - Math.sin(yaw) * side; ty = wv.h + 0.95 + bob;
+    } else if (s.soul === 'home') { tx = s.exitOpen ? -10.5 : -9.55; ty = 0.9 + bob; tz = -6.5; follow = 1.6; }
+    if (s.soul === 'free') v.pos.set(tx, ty, tz); else v.pos.lerp(_soulT.set(tx, ty, tz), Math.min(1, dt * follow));
+    v.g.position.copy(v.pos); v.g.scale.setScalar(1); v.g.visible = true;
     v.g.lookAt(camera.position.x, v.g.position.y, camera.position.z);
-    v.mat.opacity = Math.max(twinkle, v.level) * fade;
-    v.g.userData.eL.material.opacity = v.g.userData.eR.material.opacity = Math.max(0, v.level - 0.4) * 1.6 * fade;
-    v.glow.material.opacity = (0.25 * twinkle + 0.75 * v.level) * fade;
+    v.mat.opacity = Math.max(twinkle, v.level);
+    v.g.userData.eL.material.opacity = v.g.userData.eR.material.opacity = Math.max(0, v.level - 0.4) * 1.6;
+    v.glow.material.opacity = 0.25 * twinkle + 0.75 * v.level;
     v.glow.scale.setScalar(0.8 + 0.5 * v.level);
-    v.light.position.copy(v.g.position); v.light.intensity = show ? v.level * 1.8 * fade : 0; }
+    v.light.position.copy(v.g.position); v.light.intensity = v.level * 1.8; }
   // keep windows wake up during the end tease
   { const tt = teaseAt >= 0 ? clock - teaseAt : -1;
     for (const w of teaseWins) { const on = tt >= 0 ? Math.min(1, Math.max(0, (tt - 2.0 - w.order * 0.22) / 0.25)) : 0; w.m.color.copy(winOff).lerp(winOn, on); }
@@ -1388,11 +1422,11 @@ function render(dt, alpha) {
   const bHidden = s.bones.BONE_B === 'atSpawn' && !s.reveal.RV_BONE_B.revealed && (s.npc.state === 'AwaitingHelp' || clock - skelFx.scatterAt > 1.5);
   glint.material.opacity = bHidden ? Math.pow(Math.max(0, Math.sin(clock * 2.3)), 12) * 0.9 : 0;
   for (const f of fogB) f.material.opacity += ((s.reveal.RV_BONE_B.revealed ? 0.07 : 0.5) - f.material.opacity) * Math.min(1, dt * 3);
-  const carriedIds = LEVEL.boneIds.filter(id => s.bones[id] === 'carried'), soulsN = LEVEL.soulIds.filter(id => s.souls[id]).length, key = carriedIds.join() + '|' + soulsN;
+  const carriedIds = LEVEL.boneIds.filter(id => s.bones[id] === 'carried'), soulC = s.soul === 'carried', key = carriedIds.join() + '|' + soulC;
   if (key !== bonesKey) {
     bonesKey = key;
     $('bones').innerHTML = carriedIds.map(id => `<div class="chip">${BONE_SVG}${BONE_LABEL[id]}</div>`).join('')
-      + (soulsN ? `<div class="chip">${SOUL_SVG}Lost souls ${soulsN}/${LEVEL.soulIds.length}</div>` : '');
+      + (soulC ? `<div class="chip">${SOUL_SVG}Lost soul (following you)</div>` : '');
   }
 
   // camera: dead zone + damped follow; scripted framing on the gate during the beat
