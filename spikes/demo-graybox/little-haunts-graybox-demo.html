@@ -131,7 +131,8 @@ button.ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1.
 (function () {
   const seen = new Set();
   window.reportError = function (where, e) {
-    const msg = (e && (e.stack || e.message)) || String(e), key = where + msg.slice(0, 120);
+    const m = e && e.message, st = e && e.stack; // Safari's stack omits the message, so include both
+    const msg = m ? (st && st.includes(m) ? st : m + (st ? '\n' + st : '')) : String(e), key = where + msg.slice(0, 120);
     if (seen.has(key)) return; seen.add(key);
     const box = document.getElementById('err'); if (!box) return;
     box.style.display = 'block'; box.textContent += `[${where}] ${msg}\n\n`;
@@ -697,7 +698,8 @@ wallBox(-10.3, -5.4, 2.6, 0.4, 1.0); wallBox(-10.3, -7.6, 2.6, 0.4, 1.0); wallBo
 
 // tombstones + runes
 const runeMeshes = {};
-for (const t of LEVEL.tombs) {  const g = new THREE.Group(); g.position.set(t.x, 0, t.z); g.rotation.y = t.rot;
+for (const t of LEVEL.tombs) {
+  const g = new THREE.Group(); g.position.set(t.x, 0, t.z); g.rotation.y = t.rot;
   const h = 0.7 + rnd() * 0.25;
   g.add(mesh(new THREE.BoxGeometry(0.8, h, 0.26), M.stone, 0, h/2, 0));
   const top = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.26, 16), M.stone, 0, h, 0); top.rotation.x = Math.PI/2; g.add(top);
@@ -1034,13 +1036,14 @@ function sampleIntents() {
     knob.style.transform = `translate(${dx}px,${dy}px)`;
     const m = Math.hypot(dx, dy) / max; touch.mx = m < 0.15 ? 0 : dx/max; touch.my = m < 0.15 ? 0 : -dy/max;
   };
-  stick.addEventListener('pointerdown', ev => { sid = ev.pointerId; stick.setPointerCapture(sid); ensureAudio(); setStick(ev); });
+  const capture = (el, id) => { try { el.setPointerCapture(id); } catch (e) { /* interrupted touch: input still works without capture */ } };
+  stick.addEventListener('pointerdown', ev => { sid = ev.pointerId; capture(stick, sid); ensureAudio(); setStick(ev); });
   stick.addEventListener('pointermove', ev => { if (ev.pointerId === sid) setStick(ev); });
   const endStick = ev => { if (ev.pointerId !== sid) return; sid = null; touch.mx = touch.my = 0; knob.style.transform = ''; };
   stick.addEventListener('pointerup', endStick); stick.addEventListener('pointercancel', endStick);
   const hold = (id, onDown, onUp) => {
     const b = $(id);
-    b.addEventListener('pointerdown', ev => { ev.preventDefault(); b.setPointerCapture(ev.pointerId); b.classList.add('on'); ensureAudio(); onDown(); });
+    b.addEventListener('pointerdown', ev => { ev.preventDefault(); capture(b, ev.pointerId); b.classList.add('on'); ensureAudio(); onDown(); });
     const up = () => { b.classList.remove('on'); onUp && onUp(); };
     b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
   };
@@ -1082,7 +1085,7 @@ function cue(e) {
   switch (e.k) {
     case 'pickup': SFX.pickup(); playAnim('happy', 0.7); break;
     case 'reveal': {
-      SFX.reveal(); const r = LEVEL.runes.find(r => r.id === e.id); puff(r.x, 0.6, r.z, 0x6ff2e2, 8, 0.5);
+      SFX.reveal(); const r = LEVEL.revealables.find(r => r.id === e.id); puff(r.x, r.id === 'RV_BONE_B' ? 0.3 : 0.6, r.z, 0x6ff2e2, 8, 0.5);
       if (firstRevealAt < 0) firstRevealAt = state.tick; playAnim('curious', 0.8); break;
     }
     case 'light': SFX.light(); puff(...lampWorld(e.id), 0xffb560, 5, 0.35); playAnim('happy', 0.5); break;
