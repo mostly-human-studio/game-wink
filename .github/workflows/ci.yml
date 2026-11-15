@@ -18,3 +18,22 @@ jobs:
       - run: npm run depcruise
       - run: npm test
       - run: npm run build
+
+  browsers:
+    # Spec §10.4: replay determinism in Chromium, Firefox and WebKit. Any mismatch fails CI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

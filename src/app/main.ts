@@ -53,7 +53,7 @@ function frame(now: number): void {
   }
   view.draw(level, prev, state, plan.alpha);
   const speed = Math.sqrt(state.wick.vx * state.wick.vx + state.wick.vz * state.wick.vz);
-  hud.textContent = `tick ${state.tick} · ${speed.toFixed(2)} m/s · target ${state.target ?? 'none'} · safety-net ${state.depenetrations}`;
+  hud.textContent = `tick ${state.tick} · pos ${state.wick.x.toFixed(2)}, ${state.wick.z.toFixed(2)} · ${speed.toFixed(2)} m/s · target ${state.target ?? 'none'} · safety-net ${state.depenetrations}`;
   log.textContent = recent.join('\n');
   requestAnimationFrame(frame);
 }
