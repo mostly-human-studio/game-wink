@@ -24,7 +24,7 @@ Nothing here is copied from the graybox. The collision maths is the same maths, 
 | §10.5 level validation | Done for the data that exists so far |
 | §14.1 item 12 collision gauntlet | Passing |
 | §14.1 item 13 reveal-gated interaction | Passing |
-| §14.1 item 3 replay determinism | Node leg passing. Browser legs not wired up |
+| §14.1 item 3 replay determinism | Node ×3 plus Chromium, Firefox and WebKit, all against `tests/replay/golden.json` |
 
 ## What's not here
 
@@ -32,7 +32,7 @@ Nothing here is copied from the graybox. The collision maths is the same maths, 
 - Dialogue, scripted beats, and the A4 input-boundary rule that depends on them.
 - Puzzles, the NPC, bones, items, checkpoints, saves, play-time ticks (A5), and the completion screen.
 - The Forgotten Graveyard. Its collision is extracted from approved assets (§11.3). `proving-ground` is a hand-built test yard.
-- Playwright (cross-browser replay and the item 7 smoke tests), the bundle budget check, and the owner's holdout tests.
+- The §14.1 item 7 smoke suite (only a boot test exists), the bundle budget check, and the owner's holdout tests.
 - Touch controls (D5 is open).
 
 ## Open questions for the owner
@@ -47,5 +47,5 @@ Nothing here is copied from the graybox. The collision maths is the same maths, 
 
 - **Gauntlet.** About 940,000 moves: six starting points in the yard, 360 headings each, seven speeds from 0 to 42 m/s (10× dash) held for a second, plus single leaps of up to 40 m. No path crosses a collider, nothing overlaps, and the safety net never fires. Separate cases cover an endless zero-thickness fence, wall sliding, a post, acute corners from 10° to 80°, and a gap narrower than Wick.
 - **Mutation check.** Removing the capsule end caps fails 6 gauntlet tests; removing the slide fails 2. Removing the skin was not caught by the gauntlet, so `collision.test.ts` now asserts the 1 mm gap directly.
-- **Replay.** Three seeded two-minute input streams, each replayed three times. Hashes are compared at every 60th tick and pinned in a committed snapshot. The streams are checked to trigger every event kind, so they aren't hashing an empty floor.
+- **Replay.** Three seeded two-minute input streams, replayed three times in Node and once each in Chromium, Firefox and WebKit. Hashes are compared at every 60th tick against `tests/replay/golden.json`. The streams are checked to trigger every event kind, so they aren't hashing an empty floor. After an intended behaviour change, run `npm run replay:record` and review the diff.
 - **Guards.** A deliberate violation file (trig, `Date`, `document`, an engine import) was confirmed to fail ESLint, the DOM-free typecheck and dependency-cruiser, then removed.

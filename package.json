@@ -14,10 +14,14 @@
     "lint": "eslint .",
     "depcruise": "depcruise src --config .dependency-cruiser.cjs",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm run depcruise && npm run test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run depcruise && npm run test && npm run build",
+    "replay:record": "UPDATE_GOLDEN=1 vitest run tests/replay",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
     "dependency-cruiser": "^18.7.2",
     "eslint": "^10.15.0",
     "typescript": "^6.0.3",

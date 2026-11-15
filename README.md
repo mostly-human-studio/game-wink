@@ -9,7 +9,7 @@ Little Haunts, a 3D browser game from Mostly Human Studio. Wick is a small float
 | `src/game/` | The pure, deterministic game core: movement, swept collision, lantern reveal, interaction targeting. |
 | `src/levels/` | Pure level data. Only a test yard (`proving-ground`) so far. |
 | `src/app/`, `src/engine/` | Boot, fixed-timestep loop, keyboard input, and a collider debug view. No renderer yet. |
-| `tests/` | Unit tests, the collision gauntlet, and replay determinism. |
+| `tests/` | Unit tests, the collision gauntlet, and replay determinism (Node and three browser engines). |
 | `spikes/demo-graybox/` | The disposable playable graybox. Never imported by `src/`. |
 | `docs/phase-1b-core.md` | What the core covers, what it doesn't, and the open questions. |
 | `little-haunts-v0_3_1-amendments.md` | Amendments to the v0.3 specification. |
@@ -20,6 +20,7 @@ Little Haunts, a 3D browser game from Mostly Human Studio. Wick is a small float
 npm install
 npm run dev      # collider view of the proving ground, keyboard only
 npm run check    # typecheck, lint, layer rules, tests, build
+npm run test:browser   # replay determinism and a boot test in Chromium, Firefox, WebKit
 ```
 
 Controls: WASD or arrows to move, Shift to dash, Space to raise the lantern, E to interact.
