@@ -1,0 +1,7 @@
+:root { --night: #0d1330; --cream: #f3e6c8; --amber: #f2a03d; }
+html, body { margin: 0; height: 100%; background: var(--night); color: var(--cream); font: 14px/1.4 ui-monospace, Menlo, Consolas, monospace; overflow: hidden; }
+#view { display: block; width: 100vw; height: 100vh; }
+#hud, #log, #help { position: fixed; left: 12px; margin: 0; pointer-events: none; text-shadow: 0 1px 4px #000; }
+#hud { top: 10px; color: var(--amber); }
+#log { top: 34px; white-space: pre; opacity: 0.8; }
+#help { bottom: 10px; opacity: 0.7; }

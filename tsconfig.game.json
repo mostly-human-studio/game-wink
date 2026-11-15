@@ -1,0 +1,9 @@
+{
+  "//": "Spec §10.4: the pure layers are typechecked with no DOM and no ambient types, so platform usage fails to compile.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/game", "src/levels", "src/shared"]
+}
