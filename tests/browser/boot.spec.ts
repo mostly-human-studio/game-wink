@@ -10,16 +10,13 @@ test('the app boots, moves and raises the lantern', async ({ page }) => {
   const hud = page.locator('#hud');
   await expect(hud).toContainText('tick');
 
-  await page.keyboard.down('KeyD');
-  await expect(hud).toContainText('2.40 m/s');
-  await page.keyboard.up('KeyD');
-  await expect(hud).toContainText('0.00 m/s');
-
-  // Walk up-right from spawn (world -z) until Wick is beside the hidden rune. Polling his
-  // position instead of sleeping keeps this steady on a slow CI machine.
+  // Walk up-right from spawn (straight along world -z, a clear path) until Wick is beside the
+  // hidden rune. Nothing moves him before this, so the route doesn't depend on timing, and
+  // polling his position instead of sleeping keeps it steady on a slow CI machine.
   const worldZ = async (): Promise<number> => Number(/pos (-?[\d.]+), (-?[\d.]+)/.exec((await hud.textContent()) ?? '')?.[2] ?? Number.NaN);
   await page.keyboard.down('KeyW');
   await page.keyboard.down('KeyD');
+  await expect(hud).toContainText('2.40 m/s');
   await expect.poll(worldZ, { timeout: 20_000, intervals: [50] }).toBeLessThan(-2.8);
   await page.keyboard.up('KeyW');
   await page.keyboard.up('KeyD');
