@@ -24,6 +24,10 @@ npm run check    # typecheck, lint, layer rules, tests, build
 
 Controls: WASD or arrows to move, Shift to dash, Space to raise the lantern, E to interact.
 
+## Hosting
+
+Pushes to `main` build the app and publish it to GitHub Pages (`.github/workflows/pages.yml`). The site root is the built app; the graybox stays at `spikes/demo-graybox/little-haunts-graybox-demo.html`. Pages must be set to deploy from GitHub Actions.
+
 ## Rules for `src/game` and `src/levels`
 
 These layers are deterministic (spec §10.3). They may not touch the DOM, the clock, `Math.random`, or trigonometry, and they import only from `game`, `levels` and `shared`. ESLint, a DOM-free tsconfig and dependency-cruiser enforce this; CI fails on any violation.
